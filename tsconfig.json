@@ -1,0 +1,42 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "noEmit": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@nichefinder/domain-types": ["./packages/domain-types/src"],
+      "@nichefinder/scoring-engine": ["./packages/scoring-engine/src"],
+      "@acu/acu-core": ["./packages/acu-core/src"],
+      "@acu/provider-contracts": ["./packages/provider-contracts/src"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    ".next/types/**/*.ts",
+    "packages/**/*.ts",
+    "services/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

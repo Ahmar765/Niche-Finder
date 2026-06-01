@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "paths": {
+      "@nichefinder/domain-types": ["../packages/domain-types/src"],
+      "@nichefinder/scoring-engine": ["../packages/scoring-engine/src"],
+      "@/*": ["../../src/*"]
+    }
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../packages/domain-types" },
+    { "path": "../packages/scoring-engine" }
+  ]
+}

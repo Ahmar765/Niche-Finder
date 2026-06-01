@@ -1,0 +1,25 @@
+{
+  "name": "Niche Finder — Venture OS",
+  "short_name": "Venture OS",
+  "description": "The AI Operating System for Venture Creation.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#040b16",
+  "theme_color": "#040b16",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://picsum.photos/seed/niche-icon-192/192/192",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://picsum.photos/seed/niche-icon-512/512/512",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "finance", "productivity"]
+}

@@ -1,0 +1,94 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasAnyRole(roles) {
+      return isSignedIn() && getUserData().roles.hasAny(roles);
+    }
+
+    function isAdmin() {
+      return hasAnyRole(['admin', 'super_admin']);
+    }
+
+    // Collection: users
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow update: if isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['roles', 'createdAt']);
+      allow create, delete: if false; 
+    }
+
+    // Collection: wallets
+    match /wallets/{userId} {
+        allow get: if isOwner(userId) || isAdmin();
+        allow write: if false; 
+    }
+
+    // Collection: acu_transactions
+    match /acu_transactions/{transactionId} {
+        allow get: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+        allow list: if isAdmin();
+        allow write: if false; 
+    }
+    
+    // Collection: search_sessions
+    match /search_sessions/{sessionId} {
+      allow get: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow list: if isAdmin();
+      allow write: if false;
+    }
+
+    // Collection: niche_results
+    match /niche_results/{nicheId} {
+      allow get: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+
+    // Collection: venture_projects
+    match /venture_projects/{projectId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+
+    // Collection: generated_assets
+    match /generated_assets/{assetId} {
+       allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+       allow list: if isAdmin();
+       allow write: if false;
+    }
+    
+    // Collection: user_memory
+    match /user_memory/{userId} {
+      allow get: if isOwner(userId);
+      allow write: if false;
+    }
+    
+    // Collection: blog_posts
+    match /blog_posts/{postId} {
+      allow get: if resource.data.status == 'published' || isAdmin();
+      allow list: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Collection: contact_submissions
+    match /contact_submissions/{submissionId} {
+      allow create: if true;
+      allow read, list, update, delete: if isAdmin();
+    }
+  }
+}

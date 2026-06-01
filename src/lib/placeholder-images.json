@@ -1,0 +1,10 @@
+{
+  "placeholderImages": [
+    {
+      "id": "investor-financial-dashboard",
+      "description": "A screenshot of the Niche Finder application's Investor Financial Dashboard, showing key metrics like revenue, profit, and forecasts.",
+      "imageUrl": "https://picsum.photos/seed/investor-dashboard-main/2432/1442",
+      "imageHint": "financial dashboard"
+    }
+  ]
+}

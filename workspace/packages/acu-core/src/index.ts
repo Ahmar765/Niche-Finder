@@ -1,0 +1,1 @@
+// Obsolete workspace artifact.

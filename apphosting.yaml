@@ -1,0 +1,38 @@
+# Settings to manage and configure a Firebase App Hosting backend.
+# https://firebase.google.com/docs/app-hosting/configure
+runConfig:
+  # Pin the runtime to a specific major version of Node.js.
+  runtime: 'nodejs20'
+  # Increase this value for better availability in production.
+  maxInstances: 2
+
+# Non-secret environment variables for configuration.
+environmentVariables:
+  GOOGLE_CLOUD_PROJECT: "project-a1cc2443-4fc8-4aeb-91b"
+  NEXT_PUBLIC_FIREBASE_PROJECT_ID: "project-a1cc2443-4fc8-4aeb-91b"
+  GOOGLE_CLOUD_LOCATION: "global"
+  GOOGLE_GENAI_USE_VERTEXAI: "true"
+  OPENAI_DEFAULT_MODEL: "gpt-4-turbo"
+  GEMINI_DEFAULT_MODEL: "gemini-1.5-flash"
+  VERTEX_DEFAULT_MODEL: "gemini-1.5-pro-preview-0409"
+  NEXT_PUBLIC_APP_URL: "https://nichefinder.com"
+
+# Define the secrets your application needs at runtime.
+# IMPORTANT: You must create these secrets in Google Cloud Secret Manager
+# for your deployment to succeed. Use the secret names specified below.
+# gcloud secrets create [SECRET_NAME] --data-file=-
+secretEnvironmentVariables:
+  - key: STRIPE_API_KEY
+    secret: STRIPE_API_KEY
+  - key: STRIPE_WEBHOOK_SECRET
+    secret: STRIPE_WEBHOOK_SECRET
+  - key: GEMINI_API_KEY
+    secret: GEMINI_API_KEY
+  - key: OPENAI_API_KEY
+    secret: OPENAI_API_KEY
+  - key: NEXT_PUBLIC_FIREBASE_API_KEY
+    secret: NEXT_PUBLIC_FIREBASE_API_KEY
+  - key: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+    secret: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  - key: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+    secret: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY

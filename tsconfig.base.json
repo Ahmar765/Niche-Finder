@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "declaration": true,
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@acu/acu-core/*": ["packages/acu-core/src/*"],
+      "@acu/provider-contracts/*": ["packages/provider-contracts/src/*"],
+      "@acu/config/*": ["packages/config/src/*"],
+      "@acu/logger/*": ["packages/logger/src/*"],
+      "@acu/db/*": ["packages/db/src/*"]
+    }
+  }
+}

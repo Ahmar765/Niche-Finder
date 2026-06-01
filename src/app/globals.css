@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222 84% 4.9%; /* Dark navy/charcoal */
+    --foreground: 210 40% 98%;
+    --card: 222 84% 6.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 197 71% 53%; /* Vibrant Blue #29ABE2 */
+    --primary-foreground: 222 84% 4.9%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 175 63% 48%; /* Turquoise #30D5C8 */
+    --accent-foreground: 222 84% 4.9%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 197 71% 53%; /* Match primary */
+    --radius: 0.5rem;
+    --chart-1: 197 71% 53%; /* primary */
+    --chart-2: 175 63% 48%; /* accent */
+    --chart-3: 210 40% 98%; /* foreground */
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --score-high: 142 76% 40%;
+    --score-medium: 45 93% 47%;
+    --score-low: 0 84% 60%;
+  }
+
+  .dark {
+    --background: 222 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222 84% 6.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 197 71% 53%; /* Vibrant Blue #29ABE2 */
+    --primary-foreground: 222 84% 4.9%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 175 63% 48%; /* Turquoise #30D5C8 */
+    --accent-foreground: 222 84% 4.9%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 197 71% 53%; /* Match primary */
+    --chart-1: 197 71% 53%;
+    --chart-2: 175 63% 48%;
+    --chart-3: 210 40% 98%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --score-high: 142 71% 45%;
+    --score-medium: 45 93% 55%;
+    --score-low: 0 72% 51%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+@layer utilities {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+}

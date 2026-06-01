@@ -1,0 +1,15 @@
+
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "paths": {
+      "@nichefinder/domain-types": ["../packages/domain-types/src"]
+    }
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../packages/domain-types" }
+  ]
+}

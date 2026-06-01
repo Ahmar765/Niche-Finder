@@ -1,0 +1,108 @@
+
+{
+  "entities": {
+    "user": {
+      "title": "User",
+      "description": "Represents an individual user.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "roles": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "roles", "createdAt"]
+    },
+    "wallet": {
+      "title": "User ACU Wallet",
+      "description": "Manages a user's ACU balances across different types.",
+      "type": "object",
+      "properties": {
+        "freeAcuBalance": { "type": "number" },
+        "paidAcuBalance": { "type": "number" },
+        "bonusAcuBalance": { "type": "number" },
+        "adminAcuBalance": { "type": "number" },
+        "totalAvailableAcu": { "type": "number" },
+        "lifetimePurchasedAcu": { "type": "number" },
+        "lifetimeFreeAcuGranted": { "type": "number" },
+        "lifetimeAcuSpent": { "type": "number" },
+        "baseCurrency": { "type": "string", "enum": ["GBP"] },
+        "displayCurrency": { "type": "string" },
+        "welcomeBonusGranted": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "acu_transaction": {
+      "title": "ACU Transaction",
+      "description": "An immutable, auditable record of a single ACU transaction.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "type": { "type": "string" },
+        "acusCharged": { "type": "number" },
+        "note": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "venture_user_memory": {
+      "title": "Venture User Memory",
+      "description": "The multi-tier cognitive layer of the OS that learns user preferences and behavior.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userMemory": { "type": "object" },
+        "behaviour": { "type": "object" },
+        "intelligenceMemory": { "type": "object" },
+        "intelligence": { "type": "object" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "venture_project": {
+      "title": "Venture Project",
+      "description": "A workspace for an unlocked niche idea with workspace and process memory.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "status": { "type": "string" },
+        "workspaceMemory": { "type": "object" },
+        "processMemory": { "type": "object" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "platform_event": {
+      "title": "Platform Event",
+      "description": "Immutable ledger of all user and system actions.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "eventType": { "type": "string" },
+        "payload": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/user" },
+      "description": "Stores user profile information."
+    },
+    "/wallets/{userId}": {
+      "schema": { "$ref": "#/entities/wallet" },
+      "description": "Stores user ACU balances."
+    },
+    "/user_memory/{userId}": {
+      "schema": { "$ref": "#/entities/venture_user_memory" },
+      "description": "Stores the multi-tier cognitive memory for a user."
+    },
+    "/venture_projects/{projectId}": {
+      "schema": { "$ref": "#/entities/venture_project" },
+      "description": "Stores active venture workspaces with workspace and process memory."
+    },
+    "/platform_events/{eventId}": {
+      "schema": { "$ref": "#/entities/platform_event" },
+      "description": "Immutable ledger of platform activities."
+    }
+  }
+}
