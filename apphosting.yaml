@@ -9,7 +9,7 @@ runConfig:
 # Non-secret environment variables for configuration.
 environmentVariables:
   GOOGLE_CLOUD_PROJECT: "project-a1cc2443-4fc8-4aeb-91b"
-  NEXT_PUBLIC_FIREBASE_PROJECT_ID: "project-a1cc2443-4fc8-4aeb-91b"
+  NEXT_PUBLIC_FIREBASE_PROJECT_ID: "niche-finder-56a34"
   GOOGLE_CLOUD_LOCATION: "global"
   GOOGLE_GENAI_USE_VERTEXAI: "true"
   OPENAI_DEFAULT_MODEL: "gpt-4-turbo"

@@ -166,7 +166,7 @@ export function UserDashboard() {
                 toast.info('Account already initialized');
             } else if (result.status === 'skipped') {
                 toast.error('Server credentials missing', {
-                    description: 'Download a service account key from Firebase project studio-1782735361-d2b8b, save it as google-credentials.json, uncomment GOOGLE_APPLICATION_CREDENTIALS in .env, and restart npm run dev.',
+                    description: 'Download a service account key from Firebase project niche-finder-56a34, save it in the project root, set GOOGLE_APPLICATION_CREDENTIALS in .env, and restart npm run dev.',
                 });
             } else if (result.error) {
                 toast.error('Setup failed', { description: result.error });
@@ -234,7 +234,7 @@ export function UserDashboard() {
                                     Sign-in is working. Wallet credits and intelligence data are created by the server using Firebase Admin.
                                 </p>
                                 <ol className="text-xs text-muted-foreground max-w-2xl list-decimal list-inside space-y-1">
-                                    <li>Open Firebase Console → project <strong className="text-amber-200/90">studio-1782735361-d2b8b</strong> → Settings → Service accounts</li>
+                                    <li>Open Firebase Console → project <strong className="text-amber-200/90">niche-finder-56a34</strong> → Settings → Service accounts</li>
                                     <li>Generate new private key and save it as <code className="text-amber-200/80">google-credentials.json</code> in the project root</li>
                                     <li>In <code className="text-amber-200/80">.env</code>, set <code className="text-amber-200/80">GOOGLE_APPLICATION_CREDENTIALS=./google-credentials.json</code></li>
                                     <li>Restart <code className="text-amber-200/80">npm run dev</code>, then click Retry setup below</li>
