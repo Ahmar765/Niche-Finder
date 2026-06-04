@@ -133,7 +133,7 @@ const exportToPowerPoint = async (slides: Slides, template: PitchTemplate): Prom
         });
     });
 
-    return await pptx.write('base64');
+    return (await pptx.write({ outputType: 'base64' })) as string;
 };
 
 

@@ -40,7 +40,7 @@ export async function getSupportChatResponse(userId: string, input: SupportChatI
 
   const memoryContext = userMemory ? `
     USER VENTURE CONTEXT (COMMAND CENTER):
-    - Top Sectors: ${userMemory.userMemory.profile.topSectors.join(', ')}
+    - Top Sectors: ${userMemory.userMemory.preferredSectors.join(', ')}
     - Activity: ${userMemory.behaviour.totalSearches} searches, ${userMemory.behaviour.totalUnlocks} unlocks.
     - Current System Suggestion: ${userMemory.intelligence.nextBestAction}
   ` : "User is new to the OS.";

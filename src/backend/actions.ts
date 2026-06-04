@@ -3,7 +3,7 @@
 
 import { cookies } from 'next/headers';
 import { adminFirestore, adminAuth, isAdminConfigured } from './firebase-admin';
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldValue, type UpdateData } from 'firebase-admin/firestore';
 import type { 
     Recommendation, 
     SearchRequest, 
@@ -69,7 +69,7 @@ async function getAuthenticatedUserId(): Promise<string | undefined> {
   return cookieStore.get('userId')?.value;
 }
 
-type NewUser = {
+export type NewUser = {
   uid: string;
   email: string | null;
   displayName: string | null;
@@ -603,7 +603,7 @@ function buildAcuDeductionUpdate(
   wallet: Record<string, unknown>,
   cost: number,
   allowsFreeAcu: boolean
-): Record<string, unknown> {
+): UpdateData<Record<string, unknown>> {
   let remaining = cost;
   const balances = {
     paidAcuBalance: Number(wallet.paidAcuBalance ?? 0),
@@ -647,7 +647,7 @@ async function refundAcuCharge(userId: string, cost: number, allowsFreeAcu: bool
     if (!walletDoc.exists) return;
 
     const wallet = walletDoc.data()!;
-    const updates: Record<string, unknown> = {
+    const updates: UpdateData<Record<string, unknown>> = {
       totalAvailableAcu: Number(wallet.totalAvailableAcu ?? 0) + cost,
       lifetimeAcuSpent: FieldValue.increment(-cost),
       updatedAt: FieldValue.serverTimestamp(),

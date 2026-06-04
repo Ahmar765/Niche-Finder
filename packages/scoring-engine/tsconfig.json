@@ -3,10 +3,8 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-     "paths": {
-      "@nichefinder/domain-types": ["../domain-types/src"]
-    }
+    "module": "ESNext",
+    "moduleResolution": "bundler"
   },
-  "include": ["src"],
-  "references": [{ "path": "../domain-types" }]
+  "include": ["src"]
 }

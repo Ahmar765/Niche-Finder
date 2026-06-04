@@ -2,6 +2,10 @@
 'use client';
 
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from 'recharts';
+
+// Recharts class components are not fully compatible with React 19 JSX types yet.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const RechartsBarChart = BarChart as any;
 import { ChartTooltipContent, ChartContainer, ChartTooltip } from '@/components/ui/chart';
 
 /**
@@ -19,7 +23,7 @@ const chartConfig = {
 export function ProviderCostChart({ data }: { data: {name: string, cost: number}[] }) {
   return (
     <ChartContainer config={chartConfig} className="min-h-[300px] w-full">
-        <BarChart accessibilityLayer data={data} margin={{ left: 12, right: 12 }}>
+        <RechartsBarChart accessibilityLayer data={data} margin={{ left: 12, right: 12 }}>
             <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.1} />
             <XAxis
                 dataKey="name"
@@ -40,7 +44,7 @@ export function ProviderCostChart({ data }: { data: {name: string, cost: number}
                 content={<ChartTooltipContent indicator="dot" formatter={(value) => `$${Number(value).toFixed(2)}`} />}
             />
             <Bar dataKey="cost" fill="var(--color-cost)" radius={[4, 4, 0, 0]} />
-        </BarChart>
+        </RechartsBarChart>
     </ChartContainer>
   );
 }

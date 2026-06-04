@@ -1,15 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { 
-  createUserWithEmailAndPassword,
-  type User,
-} from 'firebase/auth';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { ensureAuthReady } from '@/firebase/config';
 import { useAuth } from '@/firebase/provider';
 import { finalizeAuthSession } from '@/firebase/auth/post-auth';
 import { signInWithGoogle } from '@/firebase/auth/google-sign-in';
-import { initializeNewUser } from '@/backend/actions';
+import { initializeNewUser, type NewUser } from '@/backend/actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -18,7 +15,17 @@ import { Loader2, Sparkles, ShieldCheck, Mail, ArrowRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 
-export function SignUp({ onInitializeUser }: { onInitializeUser?: (user: User) => void }) {
+function toNewUser(user: { uid: string; email: string | null; displayName: string | null; photoURL: string | null; emailVerified: boolean }): NewUser {
+  return {
+    uid: user.uid,
+    email: user.email,
+    displayName: user.displayName,
+    photoURL: user.photoURL,
+    isVerified: user.emailVerified,
+  };
+}
+
+export function SignUp({ onInitializeUser }: { onInitializeUser?: (user: NewUser) => void }) {
   const [isLoadingGoogle, setIsLoadingGoogle] = useState(false);
   const [isLoadingEmail, setIsLoadingEmail] = useState(false);
   const [email, setEmail] = useState('');
@@ -31,14 +38,12 @@ export function SignUp({ onInitializeUser }: { onInitializeUser?: (user: User) =
     try {
       setIsLoadingGoogle(true);
       await signInWithGoogle(auth, (user) => {
-        const init = onInitializeUser ?? initializeNewUser;
-        void init({
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName,
-          photoURL: user.photoURL,
-          isVerified: user.emailVerified,
-        });
+        const payload = toNewUser(user);
+        if (onInitializeUser) {
+          void onInitializeUser(payload);
+        } else {
+          void initializeNewUser(payload);
+        }
       });
     } catch (error: any) {
       console.error("Google sign up failed:", error);

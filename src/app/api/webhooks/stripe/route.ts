@@ -1,5 +1,5 @@
 
-import { NextResponse } from 'next/headers';
+import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { adminFirestore } from '@/backend/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';

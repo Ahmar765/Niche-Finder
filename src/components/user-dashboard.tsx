@@ -220,7 +220,7 @@ export function UserDashboard() {
                         <h1 className="font-headline text-2xl sm:text-3xl font-bold">Command Center: {userData?.displayName || 'Operator'}</h1>
                     </div>
                     <div className="flex gap-2">
-                        <EditProfileDialog currentUserProfile={userData || { displayName: '' }} />
+                        <EditProfileDialog currentUserProfile={{ displayName: userData?.displayName ?? null, country: userData?.country, bio: userData?.bio }} />
                         <Button asChild><Link href="/search"><Search className="mr-2 h-4 w-4" /> Start OS Search</Link></Button>
                     </div>
                 </div>
@@ -363,8 +363,8 @@ export function UserDashboard() {
                                 <Badge variant="secondary" className="text-[9px] font-bold tracking-widest bg-purple-500/10 text-purple-400 border-purple-500/20">REPETITION SCANNER ACTIVE</Badge>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {memoryData?.intelligenceMemory?.automationRecommendations?.length > 0 ? (
-                                    memoryData.intelligenceMemory.automationRecommendations.map((rec: any) => (
+                                {(memoryData?.intelligenceMemory?.automationRecommendations?.length ?? 0) > 0 ? (
+                                    (memoryData?.intelligenceMemory?.automationRecommendations ?? []).map((rec: any) => (
                                         <Card key={rec.id} className="border border-purple-500/20 bg-purple-500/5 hover:bg-purple-500/10 transition-all cursor-pointer group">
                                             <CardContent className="p-4 flex gap-3">
                                                 <div className="p-2 rounded-lg bg-purple-500/20 text-purple-400 shrink-0 h-fit">
@@ -398,8 +398,8 @@ export function UserDashboard() {
                                 <Badge variant="secondary" className="text-[9px] font-bold tracking-widest bg-blue-500/10 text-blue-400 border-blue-500/20">PROACTIVE SCAN ACTIVE</Badge>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {memoryData?.intelligenceMemory?.proactiveAlerts?.length > 0 ? (
-                                    memoryData.intelligenceMemory.proactiveAlerts.map((alert: any) => (
+                                {(memoryData?.intelligenceMemory?.proactiveAlerts?.length ?? 0) > 0 ? (
+                                    (memoryData?.intelligenceMemory?.proactiveAlerts ?? []).map((alert: any) => (
                                         <Card key={alert.id} className={cn("border border-border/40 transition-all hover:bg-secondary/10 shadow-sm", alert.severity === 'high' ? 'ring-1 ring-red-500/20' : '')}>
                                             <CardContent className="p-4 flex gap-3">
                                                 <div className={cn("p-2 rounded-lg shrink-0 h-fit shadow-inner", 

@@ -5,7 +5,7 @@ import { User as FirebaseUser } from 'firebase/auth';
 import { useAuth } from '@/firebase/provider';
 import { useUser } from '@/firebase/auth/use-user';
 import { useToast } from '@/hooks/use-toast';
-import { initializeNewUser } from '@/backend/actions';
+import { initializeNewUser, type NewUser } from '@/backend/actions';
 import { finalizeAuthSession } from '@/firebase/auth/post-auth';
 import { consumeAuthRedirectResult } from '@/firebase/auth/redirect-handler';
 import { SignUp } from '@/components/auth/sign-up';
@@ -17,14 +17,8 @@ export default function SignUpPage() {
     const { toast } = useToast();
     const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-    const handleInitializeUser = (firebaseUser: FirebaseUser) => {
-        void initializeNewUser({
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            displayName: firebaseUser.displayName,
-            photoURL: firebaseUser.photoURL,
-            isVerified: firebaseUser.emailVerified,
-        });
+    const handleInitializeUser = (user: NewUser) => {
+        void initializeNewUser(user);
     };
 
     useEffect(() => {
@@ -37,7 +31,13 @@ export default function SignUpPage() {
 
                 const signedInUser = result?.user ?? auth.currentUser;
                 if (signedInUser) {
-                    handleInitializeUser(signedInUser);
+                    handleInitializeUser({
+                        uid: signedInUser.uid,
+                        email: signedInUser.email,
+                        displayName: signedInUser.displayName,
+                        photoURL: signedInUser.photoURL,
+                        isVerified: signedInUser.emailVerified,
+                    });
                     await finalizeAuthSession(signedInUser);
                 }
             } catch (error: unknown) {

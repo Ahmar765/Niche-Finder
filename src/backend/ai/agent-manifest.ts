@@ -11,7 +11,7 @@ export interface AgentConfig {
   directive: string;
 }
 
-export const AI_AGENTS: Record<AgentType, AgentConfig> = {
+export const AI_AGENTS: Partial<Record<AgentType, AgentConfig>> = {
   strategy: {
     id: "agent_strategy",
     name: "Strategy Agent",

@@ -1,4 +1,15 @@
-import type { ScoreInputs, ScoreBundle, TrafficLight, DecisionLabel } from '@nichefinder/domain-types';
+import type { ScoreInputs, TrafficLight, DecisionLabel } from '@nichefinder/domain-types';
+
+export interface ScoreBundle {
+  prs: number;
+  cs: number;
+  pss: number;
+  overall: number;
+  readinessLabel: TrafficLight;
+  competitivenessLabel: TrafficLight;
+  successLabel: TrafficLight;
+  decisionLabel: DecisionLabel;
+}
 
 function round1(n: number): number {
   return Math.round(n * 10) / 10;

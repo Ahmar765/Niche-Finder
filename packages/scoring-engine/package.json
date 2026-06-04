@@ -11,6 +11,6 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@nichefinder/domain-types": "file:../domain-types"
+    "@nichefinder/domain-types": "*"
   }
 }
