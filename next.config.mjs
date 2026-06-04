@@ -1,4 +1,7 @@
 import withPWA from 'next-pwa';
+import { firebaseEnvFromHosting } from './src/firebase/next-env.mjs';
+
+const firebaseEnv = firebaseEnvFromHosting();
 
 const pwaConfig = withPWA({
   dest: 'public',
@@ -10,6 +13,9 @@ const pwaConfig = withPWA({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   ...pwaConfig,
+  env: {
+    ...firebaseEnv,
+  },
   images: {
     remotePatterns: [
       {

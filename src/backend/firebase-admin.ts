@@ -3,10 +3,9 @@ import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getAuth, Auth } from 'firebase-admin/auth';
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
+import { resolveFirebaseProjectId } from '@/firebase/resolve-config';
 
-const projectId =
-  process.env.GOOGLE_CLOUD_PROJECT ||
-  process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+const projectId = resolveFirebaseProjectId() || undefined;
 
 function getAdminApp(): App {
   const apps = getApps();
