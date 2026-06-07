@@ -7,6 +7,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import type { SeoArticle, SocialAmplificationTask } from '@nichefinder/domain-types';
 import {
   buildSeoCommandCenterView,
+  type PlatformSeoEvent,
   type SeoCommandCenterView,
 } from '@/lib/seo/aggregate-analytics';
 
@@ -49,7 +50,7 @@ export function useSeoLiveData(enabled: boolean): {
     return buildSeoCommandCenterView(
       articles as SeoArticle[],
       tasks as Array<SocialAmplificationTask & { articleTitle?: string }>,
-      events,
+      events as PlatformSeoEvent[],
     );
   }, [enabled, articles, tasks, events]);
 
