@@ -41,12 +41,27 @@ export const useDoc = <T extends DocumentData>(docRef: DocumentReference<T> | nu
         }
       },
       (err) => {
-        const permissionError = new FirestorePermissionError({
-          path: docRef.path,
-          operation: 'get',
+        const isPermissionDenied =
+          typeof err === 'object' &&
+          err !== null &&
+          'code' in err &&
+          (err as { code?: string }).code === 'permission-denied';
+
+        if (isPermissionDenied) {
+          const permissionError = new FirestorePermissionError({
+            path: docRef.path,
+            operation: 'get',
+          });
+          console.warn('[Firestore] Permission denied:', docRef.path);
+          setDocState({ data: null, isLoading: false, error: permissionError });
+          return;
+        }
+
+        setDocState({
+          data: null,
+          isLoading: false,
+          error: err instanceof Error ? err : new Error(String(err)),
         });
-        errorEmitter.emit('permission-error', permissionError);
-        setDocState({ data: null, isLoading: false, error: permissionError });
       }
     );
 

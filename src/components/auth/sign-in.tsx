@@ -9,7 +9,10 @@ import { ensureAuthReady } from '@/firebase/config';
 import { useAuth } from '@/firebase/provider';
 import { finalizeAuthSession } from '@/firebase/auth/post-auth';
 import { initializeNewUser } from '@/backend/actions';
+import { getBootstrapRedirect, type BootstrapAccountId } from '@/config/bootstrap-accounts';
+import { AccountTypeSelect } from '@/components/auth/account-type-select';
 import { signInWithGoogle } from '@/firebase/auth/google-sign-in';
+import { getFirebaseAuthErrorMessage } from '@/firebase/auth/error-messages';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -22,6 +25,7 @@ export function SignIn() {
   const [isLoadingGoogle, setIsLoadingGoogle] = useState(false);
   const [isLoadingGuest, setIsLoadingGuest] = useState(false);
   const [isLoadingEmail, setIsLoadingEmail] = useState(false);
+  const [accountType, setAccountType] = useState<BootstrapAccountId>('operator');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -36,12 +40,23 @@ export function SignIn() {
       setIsLoadingEmail(true);
       await ensureAuthReady();
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      await finalizeAuthSession(userCredential.user);
+      await initializeNewUser({
+        uid: userCredential.user.uid,
+        email: userCredential.user.email,
+        displayName: userCredential.user.displayName,
+        photoURL: userCredential.user.photoURL,
+        isVerified: userCredential.user.emailVerified,
+        password,
+      });
+      await finalizeAuthSession(
+        userCredential.user,
+        getBootstrapRedirect(userCredential.user.email, password)
+      );
     } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Sign In Failed',
-        description: error.message,
+        description: getFirebaseAuthErrorMessage(error),
       });
       setIsLoadingEmail(false);
     }
@@ -72,7 +87,7 @@ export function SignIn() {
       toast({
         variant: 'destructive',
         title: 'Sign In Failed',
-        description: error.message,
+        description: getFirebaseAuthErrorMessage(error),
       });
       setIsLoadingGoogle(false);
       setIsLoadingGuest(false);
@@ -89,6 +104,8 @@ export function SignIn() {
         <CardDescription>Enter your credentials to command the OS.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        <AccountTypeSelect value={accountType} onChange={setAccountType} />
+
         <form onSubmit={handleEmailSignIn} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="signin-email">Email</Label>

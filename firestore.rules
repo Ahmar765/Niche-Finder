@@ -11,16 +11,20 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
     function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return userDoc().data;
     }
 
     function hasAnyRole(roles) {
-      return isSignedIn() && getUserData().roles.hasAny(roles);
+      return isSignedIn() && userDoc().exists && getUserData().roles.hasAny(roles);
     }
 
     function isAdmin() {
-      return hasAnyRole(['admin', 'super_admin']);
+      return hasAnyRole(['admin', 'super_admin', 'finance_admin', 'support_admin']);
     }
 
     // Collection: users
@@ -33,8 +37,8 @@ service cloud.firestore {
 
     // Collection: wallets
     match /wallets/{userId} {
-        allow get: if isOwner(userId) || isAdmin();
-        allow write: if false; 
+        allow read: if isOwner(userId) || isAdmin();
+        allow write: if false;
     }
 
     // Collection: acu_transactions
@@ -89,6 +93,32 @@ service cloud.firestore {
     match /contact_submissions/{submissionId} {
       allow create: if true;
       allow read, list, update, delete: if isAdmin();
+    }
+
+    // Collection: support_cases
+    match /support_cases/{caseId} {
+      allow read, list, update: if isAdmin();
+      allow create: if isSignedIn();
+      allow delete: if false;
+    }
+
+    // Collection: seo_articles (SEO Command Center)
+    match /seo_articles/{articleId} {
+      allow read, list: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // Collection: seo_amplification_tasks (Social Amplification queue)
+    match /seo_amplification_tasks/{taskId} {
+      allow read, list: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // Collection: platform_events
+    match /platform_events/{eventId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isAdmin();
+      allow write: if false;
     }
   }
 }

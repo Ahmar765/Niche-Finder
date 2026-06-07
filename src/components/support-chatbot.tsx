@@ -62,7 +62,9 @@ export function SupportChatbot() {
         setInput('');
         setIsLoading(true);
 
-        const history = messages.map(({ id, ...rest }) => rest);
+        const history = messages
+            .filter((message) => message.id !== 'initial')
+            .map(({ id, ...rest }) => rest);
 
         try {
             const result = await submitChatMessage(history, userMessage.content);

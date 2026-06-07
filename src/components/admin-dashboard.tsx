@@ -27,6 +27,7 @@ import { Skeleton } from './ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Badge } from './ui/badge';
 import { useUser } from '@/firebase/auth/use-user';
+import { useUserRoles } from '@/hooks/use-user-roles';
 import { Textarea } from './ui/textarea';
 import Link from 'next/link';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
@@ -85,6 +86,7 @@ export function AdminDashboard() {
   const { toast } = useToast();
   const firestore = useFirestore();
   const { user } = useUser();
+  const { isAnyAdmin } = useUserRoles();
   const [isSubmittingAcu, setIsSubmittingAcu] = useState(false);
   const [isGeneratingPost, setIsGeneratingPost] = useState(false);
   const [publishingPostId, setPublishingPostId] = useState<string | null>(null);
@@ -205,11 +207,18 @@ export function AdminDashboard() {
     }
   }
 
-  const ledgerQuery = firestore ? query(collection(firestore, 'acu_transactions'), orderBy('createdAt', 'desc'), limit(50)) : null;
+  const canQueryAdminData = Boolean(firestore && user && isAnyAdmin);
+  const ledgerQuery = canQueryAdminData
+    ? query(collection(firestore!, 'acu_transactions'), orderBy('createdAt', 'desc'), limit(50))
+    : null;
   const { data: ledgerEntries, isLoading: ledgerLoading } = useCollection(ledgerQuery);
-  const blogPostsQuery = firestore ? query(collection(firestore, 'blog_posts'), orderBy('createdAt', 'desc')) : null;
+  const blogPostsQuery = canQueryAdminData
+    ? query(collection(firestore!, 'blog_posts'), orderBy('createdAt', 'desc'))
+    : null;
   const { data: blogPosts, isLoading: blogPostsLoading } = useCollection(blogPostsQuery);
-  const supportCasesQuery = firestore ? query(collection(firestore, 'support_cases'), where('status', '==', 'open'), orderBy('createdAt', 'desc')) : null;
+  const supportCasesQuery = canQueryAdminData
+    ? query(collection(firestore!, 'support_cases'), where('status', '==', 'open'), orderBy('createdAt', 'desc'))
+    : null;
   const { data: supportCases, isLoading: supportCasesLoading } = useCollection(supportCasesQuery);
 
 
@@ -363,19 +372,30 @@ export function AdminDashboard() {
                                             {blogPosts?.map((post: any) => (
                                                 <TableRow key={post.id}>
                                                     <TableCell className="font-medium max-w-xs truncate text-white">
-                                                        <Link href={`/blog/${post.slug}`} target="_blank" className="hover:underline">
-                                                            {post.title}
-                                                        </Link>
+                                                        {post.status === 'published' && post.slug ? (
+                                                            <Link href={`/blog/${post.slug}`} target="_blank" className="hover:underline">
+                                                                {post.title}
+                                                            </Link>
+                                                        ) : (
+                                                            <span title="Publish this post to make it live on the blog">
+                                                                {post.title}
+                                                            </span>
+                                                        )}
                                                     </TableCell>
                                                     <TableCell>
                                                         <Badge variant={post.status === 'published' ? 'default' : 'secondary'}>
                                                             {post.status}
                                                         </Badge>
                                                     </TableCell>
-                                                    <TableCell className="text-right">
+                                                    <TableCell className="text-right space-x-2">
                                                         {post.status === 'draft' && (
                                                             <Button size="sm" onClick={() => handlePublish(post.id)} disabled={publishingPostId === post.id}>
                                                                 {publishingPostId === post.id ? <Loader2 className="h-4 w-4 animate-spin"/> : 'Publish'}
+                                                            </Button>
+                                                        )}
+                                                        {post.status === 'published' && post.slug && (
+                                                            <Button size="sm" variant="outline" asChild>
+                                                                <Link href={`/blog/${post.slug}`} target="_blank">View live</Link>
                                                             </Button>
                                                         )}
                                                     </TableCell>

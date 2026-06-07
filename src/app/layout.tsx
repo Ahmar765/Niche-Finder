@@ -11,6 +11,7 @@ import { Footer } from '@/components/layout/footer';
 import { CookieConsent } from '@/components/cookie-consent';
 import { SupportChatbot } from '@/components/support-chatbot';
 import { PwaInstallPrompt } from '@/components/pwa-install-prompt';
+import { DevServiceWorkerCleanup } from '@/components/dev-sw-cleanup';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -47,6 +48,14 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="https://picsum.photos/seed/niche-apple-icon/180/180" />
       </head>
       <body className={cn('font-body antialiased h-full dark')} suppressHydrationWarning>
+        {process.env.NODE_ENV === 'development' && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(x){x.unregister()})});if('caches' in window){caches.keys().then(function(k){k.forEach(function(c){caches.delete(c)})})}}`,
+            }}
+          />
+        )}
+        <DevServiceWorkerCleanup />
         <FirebaseClientProvider>
           <LocaleProvider>
               <div className="flex min-h-full flex-col">

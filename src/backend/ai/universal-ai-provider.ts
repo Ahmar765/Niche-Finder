@@ -57,9 +57,19 @@ export interface GenerateTextResult {
 
 // --- AI Orchestration Strategy ---
 
+function resolvePrimaryProvider(): ProviderName {
+  const openai = AIConfig.openAI();
+  if (openai.client) return 'openai';
+  const gemini = AIConfig.gemini();
+  if (gemini.client) return 'gemini';
+  return 'openai';
+}
+
 const AI_PROVIDER_STRATEGY = {
-  primary: "openai" as ProviderName,
-  fallback: ["gemini", "vertex"] as ProviderName[],
+  get primary(): ProviderName {
+    return resolvePrimaryProvider();
+  },
+  fallback: ["gemini", "openai", "vertex"] as ProviderName[],
   routing: {
     // Maps strategic capabilities to specific providers
     reasoning: "openai" as ProviderName,           // For complex logic, short_chat
@@ -98,7 +108,7 @@ export class AIConfig {
 
   public static gemini(): { client?: GoogleGenAI; model?: string; error?: string } {
     const apiKey = process.env.GEMINI_API_KEY;
-    const model = process.env.GEMINI_DEFAULT_MODEL || "gemini-2.0-flash";
+    const model = process.env.GEMINI_DEFAULT_MODEL || "gemini-2.5-flash";
     if (!apiKey || apiKey.includes('SECRET')) {
       return { error: "Gemini API key is not configured." };
     }
@@ -201,6 +211,10 @@ export class UniversalAIClient {
     if (!this.providers[routedProvider]) {
         routedProvider = AI_PROVIDER_STRATEGY.primary;
     }
+    if (!this.providers[routedProvider]) {
+        const available = (['gemini', 'openai', 'vertex'] as ProviderName[]).find((p) => this.providers[p]);
+        if (available) routedProvider = available;
+    }
     
     // Create the prioritized list of providers to try
     const providerOrder: ProviderName[] = [
@@ -209,6 +223,8 @@ export class UniversalAIClient {
         ...AI_PROVIDER_STRATEGY.fallback.filter(p => p !== routedProvider)
     ];
 
+
+    const failures: string[] = [];
 
     for (const provider of providerOrder) {
       if (this.providers[provider]) {
@@ -222,7 +238,9 @@ export class UniversalAIClient {
               return await this.callVertex(params);
           }
         } catch (error: any) {
-          console.error(`AI call failed for provider ${provider}:`, error.message);
+          const message = error?.message || String(error);
+          failures.push(`${provider}: ${message}`);
+          console.error(`AI call failed for provider ${provider}:`, message);
           if (!allowFallback) {
             throw new Error(`AI call failed with preferred provider ${provider} and fallback is disabled.`);
           }
@@ -230,14 +248,18 @@ export class UniversalAIClient {
       }
     }
 
-    throw new Error('All configured AI providers failed or are not configured.');
+    if (failures.length > 0) {
+      throw new Error(`All AI providers failed. ${failures.join(' | ')}`);
+    }
+
+    throw new Error('No AI providers are configured. Set OPENAI_API_KEY or GEMINI_API_KEY in your environment.');
   }
 
   private async callOpenAI({ messages, systemPrompt, temperature = 0.7, maxOutputTokens = 1024, jsonMode = false }: GenerateTextParams): Promise<GenerateTextResult> {
     if (!this.providers.openai) throw new Error("OpenAI provider not configured.");
     
     const { client, model } = this.providers.openai;
-    const cappedMaxTokens = Math.min(maxOutputTokens, 4096);
+    const cappedMaxTokens = Math.min(Math.max(maxOutputTokens, 256), 4096);
 
     const requestMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
     if (systemPrompt) {
@@ -275,17 +297,27 @@ export class UniversalAIClient {
     if (!this.providers.gemini) throw new Error("Gemini provider not configured.");
     
     const { client, model } = this.providers.gemini;
-    const history = messages.slice(0, -1).filter(m => m.role !== 'system').map(m => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }],
+    const geminiMaxTokens = Math.min(Math.max(maxOutputTokens, 1024), 8192);
+    const conversational = messages.filter((m) => m.role !== 'system');
+    const lastMessage = conversational[conversational.length - 1];
+    if (!lastMessage || lastMessage.role !== 'user') {
+      throw new Error('Gemini requires the final message to be from the user.');
+    }
+
+    let history = conversational.slice(0, -1).map((m) => ({
+      role: m.role === 'assistant' ? 'model' as const : 'user' as const,
+      parts: [{ text: m.content }],
     }));
-    const lastMessage = messages[messages.length - 1];
+
+    while (history.length > 0 && history[0].role !== 'user') {
+      history = history.slice(1);
+    }
 
     const chat = client.chats.create({
         model,
         config: {
             temperature,
-            maxOutputTokens,
+            maxOutputTokens: geminiMaxTokens,
             responseMimeType: jsonMode ? "application/json" : "text/plain",
             systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined,
             safetySettings: [
@@ -301,7 +333,7 @@ export class UniversalAIClient {
     const response = await chat.sendMessage({ message: lastMessage.content });
     const text = response.text;
     if (!text) {
-        throw new Error('Gemini returned no content.');
+        throw new Error(`Gemini (${model}) returned no content. Try increasing GEMINI_DEFAULT_MODEL output limits.`);
     }
 
     return {
@@ -321,11 +353,20 @@ export class UniversalAIClient {
         if (!this.providers.vertex) throw new Error("Vertex AI provider not configured.");
 
         const { client, model } = this.providers.vertex;
-        const history = messages.slice(0, -1).filter(m => m.role !== 'system').map(m => ({
-            role: m.role === 'assistant' ? 'model' : 'user',
+        const conversational = messages.filter((m) => m.role !== 'system');
+        const lastMessage = conversational[conversational.length - 1];
+        if (!lastMessage || lastMessage.role !== 'user') {
+            throw new Error('Vertex AI requires the final message to be from the user.');
+        }
+
+        let history = conversational.slice(0, -1).map((m) => ({
+            role: m.role === 'assistant' ? 'model' as const : 'user' as const,
             parts: [{ text: m.content }],
         }));
-        const lastMessage = messages[messages.length - 1];
+
+        while (history.length > 0 && history[0].role !== 'user') {
+            history = history.slice(1);
+        }
 
         const chat = client.chats.create({
             model,

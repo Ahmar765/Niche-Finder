@@ -3,6 +3,7 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, browserLocalPersistence, setPersistence, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
+import { getStorage, type FirebaseStorage } from 'firebase/storage';
 import { resolveFirebaseClientConfig } from './resolve-config';
 
 const firebaseConfig = resolveFirebaseClientConfig();
@@ -10,6 +11,7 @@ const firebaseConfig = resolveFirebaseClientConfig();
 let app: FirebaseApp | undefined;
 let auth: Auth | undefined;
 let firestore: Firestore | undefined;
+let storage: FirebaseStorage | undefined;
 let persistenceReady: Promise<void> | null = null;
 
 function assertFirebaseConfig() {
@@ -57,4 +59,14 @@ export function getFirebaseFirestore(): Firestore {
   }
 
   return firestore;
+}
+
+export function getFirebaseStorage(): FirebaseStorage {
+  const firebaseApp = getFirebaseApp();
+
+  if (!storage) {
+    storage = getStorage(firebaseApp);
+  }
+
+  return storage;
 }

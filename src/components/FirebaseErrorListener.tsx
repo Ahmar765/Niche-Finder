@@ -7,9 +7,7 @@ import type { FirestorePermissionError } from '@/firebase/errors';
 export function FirebaseErrorListener() {
   useEffect(() => {
     const handleError = (error: FirestorePermissionError) => {
-      // The Next.js development overlay will catch this uncaught exception
-      // and display it.
-      throw error;
+      console.warn('[Firestore] Permission error:', error.message);
     };
 
     const unsubscribe = errorEmitter.on('permission-error', handleError);

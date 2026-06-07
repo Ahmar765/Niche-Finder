@@ -19,9 +19,11 @@ environmentVariables:
   GOOGLE_CLOUD_LOCATION: "global"
   GOOGLE_GENAI_USE_VERTEXAI: "true"
   OPENAI_DEFAULT_MODEL: "gpt-4-turbo"
-  GEMINI_DEFAULT_MODEL: "gemini-1.5-flash"
+  GEMINI_DEFAULT_MODEL: "gemini-2.5-flash"
   VERTEX_DEFAULT_MODEL: "gemini-1.5-pro-preview-0409"
   NEXT_PUBLIC_APP_URL: "https://nichefinder.com"
+  NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: "dg7kvnfwy"
+  NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET: "Studyear"
 
 # Define the secrets your application needs at runtime.
 # IMPORTANT: You must create these secrets in Google Cloud Secret Manager

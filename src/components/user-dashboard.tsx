@@ -220,7 +220,7 @@ export function UserDashboard() {
                         <h1 className="font-headline text-2xl sm:text-3xl font-bold">Command Center: {userData?.displayName || 'Operator'}</h1>
                     </div>
                     <div className="flex gap-2">
-                        <EditProfileDialog currentUserProfile={{ displayName: userData?.displayName ?? null, country: userData?.country, bio: userData?.bio }} />
+                        <EditProfileDialog currentUserProfile={{ displayName: userData?.displayName ?? null, photoURL: userData?.photoURL ?? null, country: userData?.country, bio: userData?.bio }} />
                         <Button asChild><Link href="/search"><Search className="mr-2 h-4 w-4" /> Start OS Search</Link></Button>
                     </div>
                 </div>

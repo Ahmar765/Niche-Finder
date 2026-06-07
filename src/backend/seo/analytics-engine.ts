@@ -46,19 +46,29 @@ export async function trackSeoEngagement(articleId: string, event: {
 }
 
 export async function getSeoCommandCenterData(): Promise<SeoAnalyticsSnapshot> {
-    // OS CLEANUP: Dummy data removed. 
-    // This now returns an empty state which will populate as platform events are generated.
-    const snapshot: SeoAnalyticsSnapshot = {
-        id: uuidv4(),
-        timestamp: new Date().toISOString(),
-        totalUniqueVisitors: 0,
-        totalViews: 0,
-        avgDwellTime: 0,
-        topKeywords: [],
-        competitorAttacks: [],
-        aiSearchVisibility: 0,
-        domainAuthority: 0
-    };
+    const [articlesSnap, tasksSnap, eventsSnap] = await Promise.all([
+        adminFirestore.collection('seo_articles').orderBy('updatedAt', 'desc').limit(50).get(),
+        adminFirestore.collection('seo_amplification_tasks').limit(50).get(),
+        adminFirestore.collection('platform_events').orderBy('createdAt', 'desc').limit(30).get(),
+    ]);
 
-    return snapshot;
+    const { buildSeoCommandCenterView } = await import('@/lib/seo/aggregate-analytics');
+
+    const view = buildSeoCommandCenterView(
+        articlesSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as any)),
+        tasksSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as any)),
+        eventsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as any)),
+    );
+
+    return {
+        id: uuidv4(),
+        timestamp: view.timestamp,
+        totalUniqueVisitors: view.totalUniqueVisitors,
+        totalViews: view.totalViews,
+        avgDwellTime: view.avgDwellTime,
+        topKeywords: view.topKeywords,
+        competitorAttacks: view.competitorAttacks,
+        aiSearchVisibility: view.aiSearchVisibility,
+        domainAuthority: view.domainAuthority,
+    };
 }

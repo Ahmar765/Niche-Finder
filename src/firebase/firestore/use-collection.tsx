@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import type { Query, DocumentData } from 'firebase/firestore';
 import { onSnapshot } from 'firebase/firestore';
-import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
 interface CollectionState<T> {
@@ -32,12 +31,25 @@ export const useCollection = <T extends DocumentData>(query: Query<T> | null) =>
         setCollectionState({ data, isLoading: false, error: null });
       },
       (err) => {
-        const permissionError = new FirestorePermissionError({
-            path: (query as any)._query.path.segments.join('/'),
-            operation: 'list',
+        const path = (query as { _query?: { path?: { segments: string[] } } })._query?.path?.segments?.join('/') ?? 'unknown';
+        const isPermissionDenied =
+          typeof err === 'object' &&
+          err !== null &&
+          'code' in err &&
+          (err as { code?: string }).code === 'permission-denied';
+
+        if (isPermissionDenied) {
+          const permissionError = new FirestorePermissionError({ path, operation: 'list' });
+          console.warn('[Firestore] Permission denied:', path);
+          setCollectionState({ data: [], isLoading: false, error: permissionError });
+          return;
+        }
+
+        setCollectionState({
+          data: [],
+          isLoading: false,
+          error: err instanceof Error ? err : new Error(String(err)),
         });
-        errorEmitter.emit('permission-error', permissionError);
-        setCollectionState({ data: [], isLoading: false, error: permissionError });
       }
     );
 

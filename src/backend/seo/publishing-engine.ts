@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { SeoArticle, SocialAmplificationTask, SeoContentType } from '@nichefinder/domain-types';
 import { UniversalAIClient } from '@/backend/ai/universal-ai-provider';
 import { getSeoAgentDirectives } from './seo-agent-manifest';
+import { normalizeSeoArticleAiOutput, parseAiJson } from '@/lib/parse-ai-json';
 
 /**
  * SEO OS: Autonomous Publishing & Amplification Engine
@@ -35,7 +36,8 @@ export async function generateAutonomousArticle(userId: string, topic: string, t
         - Semantic Keywords: List 10-15 related LSI keywords used in the text.
         - Social Hook: 1 high-engagement intro for LinkedIn.
 
-        OUTPUT FORMAT: Strict JSON.
+        OUTPUT FORMAT: Return ONLY a JSON object with keys:
+        title, slug, content, seoTitle, metaDescription, keywords (array), schema (JSON-LD string or object).
     `;
 
     try {
@@ -44,24 +46,29 @@ export async function generateAutonomousArticle(userId: string, topic: string, t
             messages: [{ role: 'user', content: `Generate the ${type} article strategy and content for the market signal: ${topic}` }],
             featureType: 'long_chat',
             tier: 'professional',
-            jsonMode: true
+            jsonMode: true,
+            maxOutputTokens: 4096,
         });
 
-        const parsed = JSON.parse(result.text);
+        const parsed = normalizeSeoArticleAiOutput(parseAiJson(result.text));
+        if (!parsed) {
+            throw new Error('AI returned data in an invalid format.');
+        }
+
         const articleId = uuidv4();
 
         const article: SeoArticle = {
             id: articleId,
-            title: parsed.title || parsed.seoTitle,
-            slug: (parsed.slug || parsed.title).toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, ''),
+            title: parsed.title,
+            slug: parsed.slug,
             content: parsed.content,
             contentType: type,
             status: 'draft',
             seoMetadata: {
-                title: parsed.seoTitle || parsed.title,
+                title: parsed.seoTitle,
                 description: parsed.metaDescription,
-                keywords: parsed.keywords || parsed.semanticKeywords || [],
-                schemaJson: typeof parsed.schema === 'string' ? parsed.schema : JSON.stringify(parsed.schema || {}),
+                keywords: parsed.keywords,
+                schemaJson: parsed.schema,
                 ogTags: {
                     "og:title": parsed.title,
                     "og:description": parsed.metaDescription,
@@ -73,7 +80,7 @@ export async function generateAutonomousArticle(userId: string, topic: string, t
             revisions: [{ id: uuidv4(), timestamp: new Date().toISOString(), authorId: userId, changeSummary: "Initial autonomous generation." }],
             updatedAt: new Date().toISOString(),
             authorId: userId,
-            tags: [type, 'autonomous_gen', ...((parsed.keywords || []).slice(0, 3))]
+            tags: [type, 'autonomous_gen', ...parsed.keywords.slice(0, 3)]
         };
 
         await adminFirestore.collection('seo_articles').doc(articleId).set(article);

@@ -2,29 +2,23 @@
 
 import { GovDashboard } from '@/components/gov-dashboard';
 import { useUser } from '@/firebase/auth/use-user';
+import { useUserRoles } from '@/hooks/use-user-roles';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 
 export default function GovPage() {
   const { user, isLoading: isUserLoading } = useUser();
+  const { isSuperAdmin, isLoading: isRolesLoading } = useUserRoles();
   const router = useRouter();
 
-  // For this high-level dashboard, only super_admin should have access.
-  const isSuperAdmin = useMemo(() => {
-    // Bypassing auth for testing purposes
-    return true;
-  }, []);
-
   useEffect(() => {
-    if (!isUserLoading) {
-      if (!user) {
-        router.replace('/');
-      }
+    if (!isUserLoading && !user) {
+      router.replace('/signin');
     }
   }, [user, isUserLoading, router]);
 
-  if (isUserLoading) {
+  if (isUserLoading || isRolesLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -34,9 +28,9 @@ export default function GovPage() {
 
   if (!user || !isSuperAdmin) {
     return (
-         <div className="flex h-screen items-center justify-center">
-            <p>Access Denied. You must be a Super Admin to view this page.</p>
-        </div>
+      <div className="flex h-screen items-center justify-center">
+        <p>Access Denied. Sign up with the Gov demo account to view this page.</p>
+      </div>
     );
   }
 

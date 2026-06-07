@@ -17,9 +17,7 @@ async function getPostBySlug(slug: string) {
         if (!adminFirestore) return null;
         
         const postsRef = adminFirestore.collection('blog_posts');
-        const q = postsRef.where('slug', '==', slug).where('status', '==', 'published').limit(1);
-        
-        const snapshot = await q.get().catch(err => {
+        const snapshot = await postsRef.where('slug', '==', slug).limit(1).get().catch((err) => {
             console.warn(`[BlogPostPage] Sync Note for ${slug}:`, err.message);
             return null;
         });
@@ -30,6 +28,10 @@ async function getPostBySlug(slug: string) {
 
         const doc = snapshot.docs[0];
         const data = doc.data();
+
+        if (data.status !== 'published') {
+            return null;
+        }
 
         let author = { name: 'Niche Finder Team', image: '' };
         if (data.authorId) {

@@ -7,6 +7,8 @@ import { useAuth } from '@/firebase/provider';
 import { finalizeAuthSession } from '@/firebase/auth/post-auth';
 import { signInWithGoogle } from '@/firebase/auth/google-sign-in';
 import { initializeNewUser, type NewUser } from '@/backend/actions';
+import { getBootstrapRedirect, type BootstrapAccountId } from '@/config/bootstrap-accounts';
+import { AccountTypeSelect } from '@/components/auth/account-type-select';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2, Sparkles, ShieldCheck, Mail, ArrowRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { getFirebaseAuthErrorMessage } from '@/firebase/auth/error-messages';
 
 function toNewUser(user: { uid: string; email: string | null; displayName: string | null; photoURL: string | null; emailVerified: boolean }): NewUser {
   return {
@@ -28,6 +31,7 @@ function toNewUser(user: { uid: string; email: string | null; displayName: strin
 export function SignUp({ onInitializeUser }: { onInitializeUser?: (user: NewUser) => void }) {
   const [isLoadingGoogle, setIsLoadingGoogle] = useState(false);
   const [isLoadingEmail, setIsLoadingEmail] = useState(false);
+  const [accountType, setAccountType] = useState<BootstrapAccountId>('operator');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   
@@ -50,7 +54,7 @@ export function SignUp({ onInitializeUser }: { onInitializeUser?: (user: NewUser
       toast({
         variant: 'destructive',
         title: 'Sign Up Failed',
-        description: error.message,
+        description: getFirebaseAuthErrorMessage(error),
       });
       setIsLoadingGoogle(false);
     }
@@ -65,21 +69,31 @@ export function SignUp({ onInitializeUser }: { onInitializeUser?: (user: NewUser
       await ensureAuthReady();
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
 
-      void initializeNewUser({
+      const payload: NewUser = {
         uid: userCredential.user.uid,
         email: userCredential.user.email,
         displayName: userCredential.user.displayName,
         photoURL: userCredential.user.photoURL,
         isVerified: userCredential.user.emailVerified,
-      });
+        password,
+      };
 
-      await finalizeAuthSession(userCredential.user);
+      if (onInitializeUser) {
+        await onInitializeUser(payload);
+      } else {
+        await initializeNewUser(payload);
+      }
+
+      await finalizeAuthSession(
+        userCredential.user,
+        getBootstrapRedirect(userCredential.user.email, password)
+      );
     } catch (error: any) {
       console.error("Email sign up failed:", error);
       toast({
         variant: 'destructive',
         title: 'Account Creation Failed',
-        description: error.message,
+        description: getFirebaseAuthErrorMessage(error),
       });
       setIsLoadingEmail(false);
     }
@@ -97,6 +111,8 @@ export function SignUp({ onInitializeUser }: { onInitializeUser?: (user: NewUser
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        <AccountTypeSelect value={accountType} onChange={setAccountType} />
+
         <form onSubmit={handleEmailSignUp} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="signup-email">Work Email</Label>

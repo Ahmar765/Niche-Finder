@@ -17,11 +17,37 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
-import { getSeoCommandCenterData } from '@/backend/seo/analytics-engine';
 import { generateAutonomousArticle, amplifyContent, publishArticle } from '@/backend/seo/publishing-engine';
 import { useUser } from '@/firebase/auth/use-user';
+import { useUserRoles } from '@/hooks/use-user-roles';
+import { useSeoLiveData } from '@/hooks/use-seo-live-data';
+import type { SeoArticle, SeoContentType } from '@nichefinder/domain-types';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { cn } from '@/shared/utils';
+import { repairBootstrapAccount } from '@/backend/bootstrap-roles';
+
+const PLATFORM_LABELS: Record<string, string> = {
+    tiktok: 'TikTok',
+    linkedin: 'LinkedIn',
+    x: 'X',
+    facebook: 'Facebook',
+    youtube_shorts: 'YouTube Shorts',
+    reddit: 'Reddit',
+};
+
+const CONTENT_TYPE_LABELS: Record<string, string> = {
+    pillar: 'Pillar',
+    supporting: 'Supporting',
+    geo: 'GEO',
+    comparison: 'Comparison',
+    faq: 'FAQ',
+    landing: 'Landing',
+    case_study: 'Case Study',
+};
+
+const formatViews = (views: number) =>
+    views >= 1000 ? `${(views / 1000).toFixed(1)}k` : views.toString();
 
 const StatCard = ({ title, value, icon: Icon, trend, color }: { title: string, value: string | number, icon: any, trend?: string, color?: string }) => (
     <Card className="bg-gradient-to-br from-card to-secondary/10 overflow-hidden border-border/40 relative">
@@ -38,17 +64,72 @@ const StatCard = ({ title, value, icon: Icon, trend, color }: { title: string, v
 );
 
 export default function SeoCommandCenter() {
-    const { user } = useUser();
-    const [analytics, setAnalytics] = useState<any>(null);
+    const { user, isLoading: isUserLoading } = useUser();
+    const { isAnyAdmin, isLoading: isRolesLoading } = useUserRoles();
+    const router = useRouter();
+    const { data: analytics, isLoading: isAnalyticsLoading } = useSeoLiveData(isAnyAdmin);
     const [isGenerating, setIsGenerating] = useState(false);
     const [topic, setTopic] = useState('');
     const [activeTab, setActiveTab] = useState('visibility');
+    const [repairPassword, setRepairPassword] = useState('');
+    const [isRepairing, setIsRepairing] = useState(false);
 
     useEffect(() => {
-        getSeoCommandCenterData().then(setAnalytics);
-    }, []);
+        if (!isUserLoading && !user) {
+            router.replace('/signin');
+        }
+    }, [user, isUserLoading, router]);
 
-    const handleGenerate = async (type: any = 'pillar') => {
+    if (isUserLoading || isRolesLoading) {
+        return (
+            <div className="flex h-screen items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+        );
+    }
+
+    if (!user || !isAnyAdmin) {
+        const handleRepair = async () => {
+            if (!repairPassword) return;
+            setIsRepairing(true);
+            const result = await repairBootstrapAccount(repairPassword);
+            setIsRepairing(false);
+
+            if (!result.ok) {
+                toast.error('Activation failed', { description: result.error });
+                return;
+            }
+
+            toast.success('SEO test access activated', {
+                description: 'Reloading your session…',
+            });
+            window.location.reload();
+        };
+
+        return (
+            <div className="flex h-screen flex-col items-center justify-center gap-4 px-6 text-center">
+                <p className="text-muted-foreground max-w-md">
+                    Access denied. Sign in with the SEO test account, or activate access below if you already signed in.
+                </p>
+                <div className="flex w-full max-w-sm flex-col gap-2">
+                    <Input
+                        type="password"
+                        placeholder="SEO test password"
+                        value={repairPassword}
+                        onChange={(e) => setRepairPassword(e.target.value)}
+                    />
+                    <Button onClick={handleRepair} disabled={isRepairing || !repairPassword}>
+                        {isRepairing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Activate SEO test access'}
+                    </Button>
+                </div>
+                <Button variant="outline" asChild>
+                    <a href="/signin">Go to Sign In</a>
+                </Button>
+            </div>
+        );
+    }
+
+    const handleGenerate = async (type: SeoContentType = 'pillar') => {
         if (!topic || !user) return;
         setIsGenerating(true);
         try {
@@ -76,18 +157,45 @@ export default function SeoCommandCenter() {
                     <p className="text-muted-foreground text-sm">Autonomous Ranking & Organic Visibility Infrastructure.</p>
                 </div>
                 <div className="flex gap-2">
-                    <div className="flex items-center gap-1.5 px-3 py-1 rounded bg-green-500/10 border border-green-500/20 text-[10px] font-bold text-green-500">
+                    <div className={cn(
+                        "flex items-center gap-1.5 px-3 py-1 rounded border text-[10px] font-bold",
+                        isAnalyticsLoading
+                            ? "bg-secondary/20 border-border/40 text-muted-foreground"
+                            : "bg-green-500/10 border-green-500/20 text-green-500"
+                    )}>
                         <Globe className="h-3.5 w-3.5" />
-                        GLOBAL INDEXING: SYNCED
+                        {isAnalyticsLoading ? 'SYNCING LIVE DATA…' : `GLOBAL INDEXING: ${analytics?.indexingPercent ?? 0}%`}
                     </div>
                 </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <StatCard title="Total Impressions" value={analytics?.totalViews?.toLocaleString() || '...'} icon={BarChart3} trend="+45% GROWTH" />
-                <StatCard title="Organic Operators" value={analytics?.totalUniqueVisitors?.toLocaleString() || '...'} icon={MousePointer2} trend="+12% VS LAST MONTH" />
-                <StatCard title="GEO Search Visibility" value={`${analytics?.aiSearchVisibility || 0}%`} icon={Bot} trend="OPTIMAL" color="accent" />
-                <StatCard title="Active Semantic Clusters" value="84" icon={Database} trend="+12 NEW" color="purple-400" />
+                <StatCard
+                    title="Total Impressions"
+                    value={isAnalyticsLoading ? '…' : (analytics?.totalViews ?? 0).toLocaleString()}
+                    icon={BarChart3}
+                    trend={analytics?.publishedCount ? `${analytics.publishedCount} PUBLISHED` : 'LIVE'}
+                />
+                <StatCard
+                    title="Organic Operators"
+                    value={isAnalyticsLoading ? '…' : (analytics?.totalUniqueVisitors ?? 0).toLocaleString()}
+                    icon={MousePointer2}
+                    trend={analytics?.articles?.length ? `${analytics.articles.length} ARTICLES` : 'AWAITING CONTENT'}
+                />
+                <StatCard
+                    title="GEO Search Visibility"
+                    value={isAnalyticsLoading ? '…' : `${analytics?.aiSearchVisibility ?? 0}%`}
+                    icon={Bot}
+                    trend={analytics?.aiSearchVisibility ? 'SCHEMA COVERAGE' : 'NO DATA'}
+                    color="accent"
+                />
+                <StatCard
+                    title="Active Semantic Clusters"
+                    value={isAnalyticsLoading ? '…' : (analytics?.semanticClusterCount ?? 0)}
+                    icon={Database}
+                    trend={analytics?.draftCount ? `${analytics.draftCount} DRAFTS` : 'LIVE'}
+                    color="purple-400"
+                />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -114,8 +222,13 @@ export default function SeoCommandCenter() {
                                 </Button>
                             </div>
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
-                                {['Comparison', 'GEO Page', 'FAQ Cluster', 'Case Study'].map(t => (
-                                    <Button key={t} variant="outline" size="sm" className="text-[9px] h-8 font-bold uppercase tracking-widest opacity-70 hover:opacity-100" onClick={() => handleGenerate(t.toLowerCase().replace(' ', '_'))}>{t}</Button>
+                                {([
+                                    { label: 'Comparison', type: 'comparison' },
+                                    { label: 'GEO Page', type: 'geo' },
+                                    { label: 'FAQ Cluster', type: 'faq' },
+                                    { label: 'Case Study', type: 'case_study' },
+                                ] as const).map(({ label, type }) => (
+                                    <Button key={type} variant="outline" size="sm" className="text-[9px] h-8 font-bold uppercase tracking-widest opacity-70 hover:opacity-100" onClick={() => handleGenerate(type)}>{label}</Button>
                                 ))}
                             </div>
                         </CardContent>
@@ -135,18 +248,24 @@ export default function SeoCommandCenter() {
                                         <CardTitle className="text-[10px] uppercase tracking-[0.2em] font-bold flex items-center gap-2 text-muted-foreground"><Target className="h-4 w-4" /> Top Ranking Keywords</CardTitle>
                                     </CardHeader>
                                     <CardContent className="space-y-4 pt-4">
-                                        {analytics?.topKeywords.map((k: any, i: number) => (
-                                            <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-background border border-border/40 shadow-sm">
-                                                <div className="flex gap-3 items-center">
-                                                    <Badge variant="outline" className="text-[10px] font-mono h-6 w-6 flex items-center justify-center rounded-md border-primary/20">#{k.position}</Badge>
-                                                    <div className="space-y-0.5">
-                                                        <p className="text-xs font-bold leading-tight">{k.keyword}</p>
-                                                        <p className="text-[9px] text-muted-foreground uppercase font-bold tracking-tighter">{k.volume.toLocaleString()} Vol</p>
+                                        {isAnalyticsLoading ? (
+                                            <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+                                        ) : analytics?.topKeywords?.length ? (
+                                            analytics.topKeywords.map((k, i) => (
+                                                <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-background border border-border/40 shadow-sm">
+                                                    <div className="flex gap-3 items-center">
+                                                        <Badge variant="outline" className="text-[10px] font-mono h-6 w-6 flex items-center justify-center rounded-md border-primary/20">#{k.position}</Badge>
+                                                        <div className="space-y-0.5">
+                                                            <p className="text-xs font-bold leading-tight">{k.keyword}</p>
+                                                            <p className="text-[9px] text-muted-foreground uppercase font-bold tracking-tighter">{k.volume.toLocaleString()} Vol</p>
+                                                        </div>
                                                     </div>
+                                                    <span className="text-[10px] font-bold text-green-400 flex items-center gap-1">+{k.growth}% <Activity className="h-2.5 w-2.5" /></span>
                                                 </div>
-                                                <span className="text-[10px] font-bold text-green-400 flex items-center gap-1">+{k.growth}% <Activity className="h-2.5 w-2.5" /></span>
-                                            </div>
-                                        ))}
+                                            ))
+                                        ) : (
+                                            <p className="text-xs text-muted-foreground text-center py-6">Generate content to populate keyword rankings.</p>
+                                        )}
                                     </CardContent>
                                 </Card>
 
@@ -155,21 +274,27 @@ export default function SeoCommandCenter() {
                                         <CardTitle className="text-[10px] uppercase tracking-[0.2em] font-bold flex items-center gap-2 text-muted-foreground"><AlertTriangle className="h-4 w-4 text-primary" /> Competitor Attack Monitor</CardTitle>
                                     </CardHeader>
                                     <CardContent className="space-y-4 pt-4">
-                                        {analytics?.competitorAttacks.map((c: any, i: number) => (
-                                            <div key={i} className="space-y-2 p-3 rounded-lg bg-background border border-border/40 shadow-sm group">
-                                                <div className="flex justify-between text-[9px] font-bold">
-                                                    <span className="uppercase opacity-60 flex items-center gap-1.5"><Globe className="h-3 w-3" /> vs {c.competitor}</span>
-                                                    <span className={cn(c.gap > 0 ? "text-green-400" : "text-red-400")}>{c.gap > 0 ? '+' : ''}{c.gap} Position</span>
+                                        {isAnalyticsLoading ? (
+                                            <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+                                        ) : analytics?.competitorAttacks?.length ? (
+                                            analytics.competitorAttacks.map((c, i) => (
+                                                <div key={i} className="space-y-2 p-3 rounded-lg bg-background border border-border/40 shadow-sm group">
+                                                    <div className="flex justify-between text-[9px] font-bold">
+                                                        <span className="uppercase opacity-60 flex items-center gap-1.5"><Globe className="h-3 w-3" /> vs {c.competitor}</span>
+                                                        <span className={cn(c.gap > 0 ? "text-green-400" : "text-red-400")}>{c.gap > 0 ? '+' : ''}{c.gap} Position</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between gap-4">
+                                                        <p className="text-xs font-bold truncate">{c.keyword}</p>
+                                                        <Badge className={cn("text-[8px] font-bold", c.risk === 'high' ? 'bg-red-500' : 'bg-amber-500')}>{c.risk.toUpperCase()} RISK</Badge>
+                                                    </div>
+                                                    <div className="h-1 w-full bg-secondary rounded-full overflow-hidden">
+                                                        <div className={cn("h-full transition-all duration-1000", c.gap > 0 ? "bg-green-400" : "bg-primary")} style={{ width: `${Math.min(100, Math.max(10, 60 + (c.gap * 10)))}%` }} />
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center justify-between gap-4">
-                                                    <p className="text-xs font-bold truncate">{c.keyword}</p>
-                                                    <Badge className={cn("text-[8px] font-bold", c.risk === 'high' ? 'bg-red-500' : 'bg-amber-500')}>{c.risk.toUpperCase()} RISK</Badge>
-                                                </div>
-                                                <div className="h-1 w-full bg-secondary rounded-full overflow-hidden">
-                                                    <div className={cn("h-full transition-all duration-1000", c.gap > 0 ? "bg-green-400" : "bg-primary")} style={{ width: `${Math.min(100, Math.max(10, 60 + (c.gap * 10)))}%` }} />
-                                                </div>
-                                            </div>
-                                        ))}
+                                            ))
+                                        ) : (
+                                            <p className="text-xs text-muted-foreground text-center py-6">No decay alerts. Articles marked refresh_required will appear here.</p>
+                                        )}
                                     </CardContent>
                                 </Card>
                             </div>
@@ -179,35 +304,83 @@ export default function SeoCommandCenter() {
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between px-1">
                                     <h3 className="text-sm font-bold flex items-center gap-2 uppercase tracking-widest text-muted-foreground"><Activity className="h-4 w-4" /> Autonomous Production Pipeline</h3>
-                                    <Badge variant="secondary" className="text-[9px] font-bold tracking-widest bg-primary/10 text-primary border-primary/20">8 DRAFTS IN QUEUE</Badge>
+                                    <Badge variant="secondary" className="text-[9px] font-bold tracking-widest bg-primary/10 text-primary border-primary/20">
+                                        {isAnalyticsLoading ? '…' : `${analytics?.draftCount ?? 0} DRAFTS IN QUEUE`}
+                                    </Badge>
                                 </div>
                                 <div className="grid gap-4">
-                                    {[
-                                        { title: "Top 5 Boring Businesses in South Africa 2026", type: "Pillar", status: "Published", views: "12k", trend: "+12%" },
-                                        { title: "How to Build a Venture OS (Complete Guide)", type: "Pillar", status: "Draft", views: "0", trend: "Pending" },
-                                        { title: "SME Grant Opportunities in Kenya Q3", type: "GEO", status: "Published", views: "8.5k", trend: "+4%" },
-                                    ].map((art, i) => (
-                                        <Card key={i} className="bg-secondary/10 border-border/40 hover:bg-secondary/20 transition-all cursor-pointer group">
-                                            <CardContent className="p-4 flex items-center justify-between">
-                                                <div className="flex gap-4 items-center">
-                                                    <div className="p-3 rounded-lg bg-background border border-border/40 text-primary shadow-inner">
-                                                        <Newspaper className="h-5 w-5" />
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <p className="text-sm font-bold group-hover:text-primary transition-colors">{art.title}</p>
-                                                        <div className="flex gap-3 items-center">
-                                                            <Badge variant="outline" className="text-[8px] uppercase tracking-widest border-primary/20 text-primary h-5">{art.type}</Badge>
-                                                            <span className="text-[10px] text-muted-foreground font-mono font-bold">{art.views} Views • {art.trend}</span>
+                                    {isAnalyticsLoading ? (
+                                        <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+                                    ) : analytics?.articles?.length ? (
+                                        analytics.articles.map((art: SeoArticle) => (
+                                            <Card key={art.id} className="bg-secondary/10 border-border/40 hover:bg-secondary/20 transition-all cursor-pointer group">
+                                                <CardContent className="p-4 flex items-center justify-between">
+                                                    <div className="flex gap-4 items-center">
+                                                        <div className="p-3 rounded-lg bg-background border border-border/40 text-primary shadow-inner">
+                                                            <Newspaper className="h-5 w-5" />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <p className="text-sm font-bold group-hover:text-primary transition-colors">{art.title}</p>
+                                                            <div className="flex gap-3 items-center">
+                                                                <Badge variant="outline" className="text-[8px] uppercase tracking-widest border-primary/20 text-primary h-5">
+                                                                    {CONTENT_TYPE_LABELS[art.contentType] ?? art.contentType}
+                                                                </Badge>
+                                                                <span className="text-[10px] text-muted-foreground font-mono font-bold">
+                                                                    {formatViews(art.analytics.views)} Views • {art.status === 'published' ? 'Live' : 'Pending'}
+                                                                </span>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <Button size="sm" variant="outline" className="h-8 text-[9px] font-bold uppercase tracking-widest">Edit Draft</Button>
-                                                    <Badge className={cn("text-[9px] font-bold uppercase tracking-widest h-8 px-4 flex items-center", art.status === 'Published' ? "bg-green-500/10 text-green-500 border-green-500/20 border" : "bg-amber-500/10 text-amber-500 border-amber-500/20 border")}>{art.status}</Badge>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    ))}
+                                                    <div className="flex gap-2">
+                                                        {art.status === 'draft' && user && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                className="h-8 text-[9px] font-bold uppercase tracking-widest"
+                                                                onClick={async () => {
+                                                                    try {
+                                                                        await amplifyContent(user.uid, art.id);
+                                                                        toast.success('Social scripts queued');
+                                                                    } catch (e: any) {
+                                                                        toast.error('Amplification failed', { description: e.message });
+                                                                    }
+                                                                }}
+                                                            >
+                                                                Amplify
+                                                            </Button>
+                                                        )}
+                                                        {art.status === 'draft' && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                className="h-8 text-[9px] font-bold uppercase tracking-widest"
+                                                                onClick={async () => {
+                                                                    try {
+                                                                        await publishArticle(art.id);
+                                                                        toast.success('Article published');
+                                                                    } catch (e: any) {
+                                                                        toast.error('Publish failed', { description: e.message });
+                                                                    }
+                                                                }}
+                                                            >
+                                                                Publish
+                                                            </Button>
+                                                        )}
+                                                        <Badge className={cn(
+                                                            "text-[9px] font-bold uppercase tracking-widest h-8 px-4 flex items-center",
+                                                            art.status === 'published'
+                                                                ? "bg-green-500/10 text-green-500 border-green-500/20 border"
+                                                                : "bg-amber-500/10 text-amber-500 border-amber-500/20 border"
+                                                        )}>
+                                                            {art.status.replace('_', ' ')}
+                                                        </Badge>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        ))
+                                    ) : (
+                                        <p className="text-xs text-muted-foreground text-center py-12">No articles yet. Use the content generator above to create your first draft.</p>
+                                    )}
                                 </div>
                             </div>
                         </TabsContent>
@@ -219,30 +392,38 @@ export default function SeoCommandCenter() {
                                         <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] flex items-center gap-2"><Share2 className="h-4 w-4 text-accent" /> Pending Amplification Queue</CardTitle>
                                     </CardHeader>
                                     <CardContent className="pt-4 space-y-4">
-                                         {[
-                                            { title: "Kenya Grant Guide", platform: "LinkedIn", type: "Executive Article", status: "Generated" },
-                                            { title: "Kenya Grant Guide", platform: "TikTok", type: "Short-form Script", status: "Pending Approval" },
-                                            { title: "Boring Businesses SA", platform: "X", type: "Thread (8 Posts)", status: "Scheduled" },
-                                        ].map((task, i) => (
-                                            <div key={i} className="flex items-center justify-between p-4 rounded-lg bg-background border border-border/40 shadow-sm group">
-                                                <div className="flex gap-4 items-center">
-                                                    <div className="p-2.5 rounded-full bg-secondary text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                                                        <MessageSquare className="h-4 w-4" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[11px] font-bold">{task.title}</p>
-                                                        <div className="flex gap-2 mt-1">
-                                                            <Badge variant="outline" className="text-[8px] tracking-tighter uppercase border-primary/20 text-primary">{task.platform}</Badge>
-                                                            <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-widest">{task.type}</span>
+                                        {isAnalyticsLoading ? (
+                                            <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+                                        ) : analytics?.amplificationTasks?.length ? (
+                                            analytics.amplificationTasks.map((task) => (
+                                                <div key={task.id} className="flex items-center justify-between p-4 rounded-lg bg-background border border-border/40 shadow-sm group">
+                                                    <div className="flex gap-4 items-center">
+                                                        <div className="p-2.5 rounded-full bg-secondary text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                                                            <MessageSquare className="h-4 w-4" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[11px] font-bold">{task.articleTitle ?? 'Article'}</p>
+                                                            <div className="flex gap-2 mt-1">
+                                                                <Badge variant="outline" className="text-[8px] tracking-tighter uppercase border-primary/20 text-primary">
+                                                                    {PLATFORM_LABELS[task.platform] ?? task.platform}
+                                                                </Badge>
+                                                                <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-widest">Social Script</span>
+                                                            </div>
                                                         </div>
                                                     </div>
+                                                    <div className="flex items-center gap-4">
+                                                        <span className="text-[10px] font-bold opacity-60 uppercase">{task.status}</span>
+                                                        {task.postUrl && (
+                                                            <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-primary/10 hover:text-primary" asChild>
+                                                                <a href={task.postUrl} target="_blank" rel="noopener noreferrer"><ArrowUpRight className="h-4 w-4" /></a>
+                                                            </Button>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-4">
-                                                    <span className="text-[10px] font-bold opacity-60 uppercase">{task.status}</span>
-                                                    <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-primary/10 hover:text-primary"><ArrowUpRight className="h-4 w-4" /></Button>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            ))
+                                        ) : (
+                                            <p className="text-xs text-muted-foreground text-center py-6">No amplification tasks. Click Amplify on a draft article to queue social scripts.</p>
+                                        )}
                                     </CardContent>
                                 </Card>
                             </div>
@@ -259,16 +440,29 @@ export default function SeoCommandCenter() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="pt-4 space-y-4">
-                            <div className="p-3 rounded-lg border border-border/40 bg-background/50 space-y-2 hover:border-primary/40 transition-colors">
-                                <span className="text-[9px] font-bold text-muted-foreground uppercase flex items-center gap-1.5"><Globe className="h-3 w-3" /> Market Signal</span>
-                                <p className="text-[11px] font-medium leading-relaxed italic">Search volume for "AI Venture Infrastructure" is spiking in GCC markets (+420% last 7d).</p>
-                                <Button size="sm" variant="link" className="text-[9px] h-auto p-0 font-bold uppercase tracking-widest text-primary flex items-center gap-1">Assign Content Agent <ArrowUpRight className="h-2.5 w-2.5" /></Button>
-                            </div>
-                            <div className="p-4 rounded-lg border-2 border-primary bg-primary/10 space-y-2 shadow-lg">
-                                <span className="text-[9px] font-bold text-primary uppercase flex items-center gap-1.5"><Zap className="h-3 w-3 animate-pulse" /> Critical Action</span>
-                                <p className="text-xs font-bold leading-tight">SEO Decay Detected: "How to Find Your Niche" dropped 15% traffic. Content refresh required.</p>
-                                <Button size="sm" className="w-full h-8 text-[9px] font-bold uppercase tracking-widest mt-2 shadow-xl">Execute Refresh Engine</Button>
-                            </div>
+                            {analytics?.strategicBrief?.marketSignal ? (
+                                <div className="p-3 rounded-lg border border-border/40 bg-background/50 space-y-2 hover:border-primary/40 transition-colors">
+                                    <span className="text-[9px] font-bold text-muted-foreground uppercase flex items-center gap-1.5"><Globe className="h-3 w-3" /> Market Signal</span>
+                                    <p className="text-[11px] font-medium leading-relaxed italic">{analytics.strategicBrief.marketSignal}</p>
+                                </div>
+                            ) : (
+                                <p className="text-xs text-muted-foreground text-center py-4">Market signals appear when content is generated.</p>
+                            )}
+                            {analytics?.strategicBrief?.criticalAction ? (
+                                <div className="p-4 rounded-lg border-2 border-primary bg-primary/10 space-y-2 shadow-lg">
+                                    <span className="text-[9px] font-bold text-primary uppercase flex items-center gap-1.5"><Zap className="h-3 w-3 animate-pulse" /> Critical Action</span>
+                                    <p className="text-xs font-bold leading-tight">{analytics.strategicBrief.criticalAction}</p>
+                                    {analytics.strategicBrief.refreshArticleId && (
+                                        <Button
+                                            size="sm"
+                                            className="w-full h-8 text-[9px] font-bold uppercase tracking-widest mt-2 shadow-xl"
+                                            onClick={() => setTopic(analytics.articles.find(a => a.id === analytics.strategicBrief.refreshArticleId)?.title ?? '')}
+                                        >
+                                            Queue Refresh
+                                        </Button>
+                                    )}
+                                </div>
+                            ) : null}
                         </CardContent>
                     </Card>
 
@@ -277,20 +471,30 @@ export default function SeoCommandCenter() {
                             <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2"><LinkIcon className="h-3 w-3" /> Backlink Intelligence</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4 pt-4">
-                            <div className="flex items-center justify-between p-3 rounded bg-background border border-border/40">
-                                <div className="space-y-0.5">
-                                    <p className="text-[10px] font-bold">Forbes.com (Unlinked)</p>
-                                    <p className="text-[8px] text-muted-foreground uppercase font-bold tracking-tighter">Authority: 92 • Mentions: 3</p>
-                                </div>
-                                <Button size="sm" variant="outline" className="h-7 text-[8px] font-bold uppercase tracking-widest">Execute Agent 5</Button>
-                            </div>
-                             <div className="flex items-center justify-between p-3 rounded bg-background border border-border/40 opacity-60">
-                                <div className="space-y-0.5">
-                                    <p className="text-[10px] font-bold">TechCrunch (Lost)</p>
-                                    <p className="text-[8px] text-muted-foreground uppercase font-bold tracking-tighter">Broken Link Detected</p>
-                                </div>
-                                <Badge variant="secondary" className="text-[8px]">RECOVERED</Badge>
-                            </div>
+                            {analytics?.backlinks?.length ? (
+                                analytics.backlinks.map((link, i) => (
+                                    <div key={i} className={cn(
+                                        "flex items-center justify-between p-3 rounded bg-background border border-border/40",
+                                        link.status === 'lost' && "opacity-60"
+                                    )}>
+                                        <div className="space-y-0.5">
+                                            <p className="text-[10px] font-bold">{link.source}</p>
+                                            <p className="text-[8px] text-muted-foreground uppercase font-bold tracking-tighter">
+                                                Authority: {link.authority} • {link.status}
+                                            </p>
+                                        </div>
+                                        {link.status === 'active' ? (
+                                            <Button size="sm" variant="outline" className="h-7 text-[8px] font-bold uppercase tracking-widest" asChild>
+                                                <a href={link.url} target="_blank" rel="noopener noreferrer">View</a>
+                                            </Button>
+                                        ) : (
+                                            <Badge variant="secondary" className="text-[8px]">{link.status.toUpperCase()}</Badge>
+                                        )}
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-xs text-muted-foreground text-center py-4">No backlinks tracked on articles yet.</p>
+                            )}
                         </CardContent>
                     </Card>
 
@@ -301,11 +505,16 @@ export default function SeoCommandCenter() {
                         <CardContent className="pt-2">
                             <div className="space-y-2">
                                 <div className="flex justify-between text-[10px] font-bold">
-                                    <span className="opacity-60">GOOGLE SEARCH CONSOLE</span>
-                                    <span className="text-green-400">INDEXED (98%)</span>
+                                    <span className="opacity-60">PUBLISHED / TOTAL</span>
+                                    <span className={cn((analytics?.indexingPercent ?? 0) >= 80 ? "text-green-400" : "text-amber-400")}>
+                                        {isAnalyticsLoading ? '…' : `${analytics?.indexingPercent ?? 0}%`}
+                                    </span>
                                 </div>
                                 <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
-                                    <div className="h-full bg-green-500 w-[98%]" />
+                                    <div
+                                        className={cn("h-full transition-all duration-500", (analytics?.indexingPercent ?? 0) >= 80 ? "bg-green-500" : "bg-amber-500")}
+                                        style={{ width: `${analytics?.indexingPercent ?? 0}%` }}
+                                    />
                                 </div>
                             </div>
                         </CardContent>

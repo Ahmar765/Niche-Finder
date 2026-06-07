@@ -17,8 +17,8 @@ export default function SignUpPage() {
     const { toast } = useToast();
     const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-    const handleInitializeUser = (user: NewUser) => {
-        void initializeNewUser(user);
+    const handleInitializeUser = async (user: NewUser) => {
+        await initializeNewUser(user);
     };
 
     useEffect(() => {
