@@ -26,6 +26,8 @@ export function getFirebaseAuthErrorMessage(error: { code?: string; message?: st
       return 'Password is too weak. Use at least 6 characters.';
     case 'auth/too-many-requests':
       return 'Too many attempts. Wait a moment and try again.';
+    case 'auth/unauthorized-domain':
+      return 'This website domain is not authorized for Firebase sign-in. In Firebase Console → niche-finder-56a34 → Authentication → Settings → Authorized domains, add the exact domain from your browser address bar (e.g. nichefinder.com or your *.hosted.app URL), then try again.';
     default:
       return error.message ?? 'Authentication failed. Please try again.';
   }

@@ -165,8 +165,13 @@ export function UserDashboard() {
             } else if (result.status === 'exists') {
                 toast.info('Account already initialized');
             } else if (result.status === 'skipped') {
+                const isLocal =
+                    typeof window !== 'undefined' &&
+                    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
                 toast.error('Server credentials missing', {
-                    description: 'Download a service account key from Firebase project niche-finder-56a34, save it in the project root, set GOOGLE_APPLICATION_CREDENTIALS in .env, and restart npm run dev.',
+                    description: isLocal
+                        ? 'Set GOOGLE_APPLICATION_CREDENTIALS in .env to your Firebase service account key, restart npm run dev, then retry.'
+                        : 'Server provisioning is unavailable. Try again in a moment or sign out and back in.',
                 });
             } else if (result.error) {
                 toast.error('Setup failed', { description: result.error });
@@ -231,17 +236,27 @@ export function UserDashboard() {
                             <div className="space-y-2">
                                 <p className="text-sm font-bold text-amber-200">Account setup incomplete</p>
                                 <p className="text-xs text-muted-foreground max-w-2xl">
-                                    Sign-in is working. Wallet credits and intelligence data are created by the server using Firebase Admin.
+                                    Sign-in succeeded, but your wallet and venture profile still need to be created on the server.
+                                    Click <strong className="text-amber-200/90">Retry setup</strong> to finish provisioning.
                                 </p>
-                                <ol className="text-xs text-muted-foreground max-w-2xl list-decimal list-inside space-y-1">
-                                    <li>Open Firebase Console → project <strong className="text-amber-200/90">niche-finder-56a34</strong> → Settings → Service accounts</li>
-                                    <li>Generate new private key and save it as <code className="text-amber-200/80">google-credentials.json</code> in the project root</li>
-                                    <li>In <code className="text-amber-200/80">.env</code>, set <code className="text-amber-200/80">GOOGLE_APPLICATION_CREDENTIALS=./google-credentials.json</code></li>
-                                    <li>Restart <code className="text-amber-200/80">npm run dev</code>, then click Retry setup below</li>
-                                </ol>
-                                <p className="text-[11px] text-muted-foreground/80">
-                                    Note: <code className="text-amber-200/70">gcp-credentials.json</code> is for Vertex AI (a different project) and cannot initialize this Firebase account.
-                                </p>
+                                {typeof window !== 'undefined' &&
+                                (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? (
+                                    <>
+                                        <p className="text-xs text-muted-foreground max-w-2xl">
+                                            Local development only: Firebase Admin needs a service account key.
+                                        </p>
+                                        <ol className="text-xs text-muted-foreground max-w-2xl list-decimal list-inside space-y-1">
+                                            <li>Open Firebase Console → project <strong className="text-amber-200/90">niche-finder-56a34</strong> → Settings → Service accounts</li>
+                                            <li>Generate new private key and save it in the project root (e.g. <code className="text-amber-200/80">niche-finder-56a34-firebase-adminsdk-....json</code>)</li>
+                                            <li>In <code className="text-amber-200/80">.env</code>, set <code className="text-amber-200/80">GOOGLE_APPLICATION_CREDENTIALS=./your-key-file.json</code></li>
+                                            <li>Restart <code className="text-amber-200/80">npm run dev</code>, then click Retry setup</li>
+                                        </ol>
+                                    </>
+                                ) : (
+                                    <p className="text-xs text-muted-foreground max-w-2xl">
+                                        On the live site this runs automatically. If Retry setup still fails, sign out and sign back in, or contact support.
+                                    </p>
+                                )}
                             </div>
                             <div className="flex shrink-0 flex-col gap-2 sm:flex-row lg:flex-col">
                                 <Button
