@@ -22,15 +22,10 @@ import { evaluateVentureState } from '@/ai/flows/evaluate-venture-flow';
 import { generateVentureAsset, type AssetType } from '@/ai/flows/generate-venture-asset-flow';
 import { generateBlogPost } from '@/ai/flows/generate-blog-post-flow';
 import { NICHE_FINDER_ACU_ACTIONS, type NicheFinderAcuActionKey } from '@/config/acuActions';
-import { resolveBootstrapAccount, resolveBootstrapRoles } from '@/config/bootstrap-accounts';
-import { applyBootstrapRoles } from '@/backend/bootstrap-roles';
-import { ACU_SYSTEM } from '@/config/acuSystem';
 import { ACU_TOP_UP_PACKAGES } from '@/config/acuPackages';
 import { AutosaveEngine } from '../../services/autosave-engine/src';
 import Stripe from 'stripe';
 import { serializeFirestoreDoc } from './serialize-firestore';
-
-const NEW_USER_PROMO_BONUS = ACU_SYSTEM.welcomeBonus.amount;
 
 function toTimestampMillis(value: unknown): number {
   if (!value) return 0;
@@ -71,14 +66,7 @@ async function getAuthenticatedUserId(): Promise<string | undefined> {
   return cookieStore.get('userId')?.value;
 }
 
-export type NewUser = {
-  uid: string;
-  email: string | null;
-  displayName: string | null;
-  photoURL: string | null;
-  isVerified: boolean;
-  password?: string;
-};
+export type { NewUser } from './initialize-new-user';
 
 /**
  * OS CORE: Immutable Platform Event Ledger
@@ -244,78 +232,6 @@ export async function syncUserMemory(userId: string, update: {
     );
 
     await memoryRef.set(currentMemory, { merge: true });
-}
-
-export async function initializeNewUser(user: NewUser) {
-  if (!isAdminConfigured()) {
-    console.warn('[initializeNewUser] Skipped — set GOOGLE_APPLICATION_CREDENTIALS in .env for wallet setup.');
-    return { status: 'skipped' as const };
-  }
-
-  try {
-    const userRef = adminFirestore.collection('users').doc(user.uid);
-    const userDoc = await userRef.get();
-
-    if (userDoc.exists) {
-      await applyBootstrapRoles(user.uid, user.email, user.password);
-      return { status: 'exists' };
-    }
-
-    const bootstrapAccount = resolveBootstrapAccount(user.email, user.password);
-    const roles = bootstrapAccount?.roles ?? resolveBootstrapRoles(user.email, user.password) ?? ['user'];
-    const isTestAccount = Boolean(bootstrapAccount);
-    const promoBonus = isTestAccount ? 0 : NEW_USER_PROMO_BONUS;
-    const testAcuGrant = bootstrapAccount?.acuGrant ?? 0;
-    const initialBalance = isTestAccount ? testAcuGrant : promoBonus;
-    const batch = adminFirestore.batch();
-
-    batch.set(userRef, {
-      email: user.email,
-      displayName: user.displayName,
-      photoURL: user.photoURL,
-      emailVerified: user.isVerified,
-      roles,
-      isTestAccount,
-      createdAt: FieldValue.serverTimestamp(),
-    });
-
-    const walletRef = adminFirestore.collection('wallets').doc(user.uid);
-    batch.set(walletRef, {
-        freeAcuBalance: isTestAccount ? 0 : promoBonus,
-        paidAcuBalance: 0,
-        bonusAcuBalance: 0,
-        adminAcuBalance: isTestAccount ? testAcuGrant : 0,
-        totalAvailableAcu: initialBalance,
-        lifetimePurchasedAcu: 0,
-        lifetimeFreeAcuGranted: isTestAccount ? 0 : promoBonus,
-        lifetimeAcuSpent: 0,
-        baseCurrency: 'GBP',
-        displayCurrency: 'GBP',
-        welcomeBonusGranted: !isTestAccount,
-        testAccountGranted: isTestAccount,
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-    });
-    
-    batch.set(adminFirestore.collection('acu_transactions').doc(uuidv4()), {
-        uid: user.uid,
-        status: 'COMPLETED',
-        type: isTestAccount ? 'TEST_ACCOUNT_CREDIT' : 'PROMO_CREDIT',
-        featureType: isTestAccount ? 'bootstrap_test_account' : 'new_user_bonus',
-        acusCharged: initialBalance,
-        balanceBefore: { totalAvailableAcu: 0 },
-        balanceAfter: { totalAvailableAcu: initialBalance },
-        note: isTestAccount ? `Test account credit for ${bootstrapAccount?.label}` : 'Welcome bonus',
-        createdAt: FieldValue.serverTimestamp(),
-    });
-
-    await batch.commit();
-    await syncUserMemory(user.uid, { action: 'onboarding_start', eventType: 'profile.updated' }); 
-
-    return { status: 'created', initialBalance };
-  } catch (error: any) {
-    return { error: error.message };
-  }
 }
 
 export async function generateNicheIdeas(searchRequest: SearchRequest, isInvestorMode?: boolean) {

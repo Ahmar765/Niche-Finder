@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { SignIn } from '@/components/auth/sign-in';
 import { finalizeAuthSession } from '@/firebase/auth/post-auth';
 import { consumeAuthRedirectResult } from '@/firebase/auth/redirect-handler';
-import { initializeNewUser } from '@/backend/actions';
+import { initializeNewUser } from '@/backend/initialize-new-user';
 import { Loader2 } from 'lucide-react';
 
 export default function SignInPage() {
@@ -26,13 +26,17 @@ export default function SignInPage() {
 
                 const signedInUser = result?.user ?? auth.currentUser;
                 if (signedInUser) {
-                    void initializeNewUser({
-                        uid: signedInUser.uid,
-                        email: signedInUser.email,
-                        displayName: signedInUser.displayName,
-                        photoURL: signedInUser.photoURL,
-                        isVerified: signedInUser.emailVerified,
-                    });
+                    try {
+                        await initializeNewUser({
+                            uid: signedInUser.uid,
+                            email: signedInUser.email,
+                            displayName: signedInUser.displayName,
+                            photoURL: signedInUser.photoURL,
+                            isVerified: signedInUser.emailVerified,
+                        });
+                    } catch (provisionError) {
+                        console.error('[SignInPage] Account provisioning failed:', provisionError);
+                    }
                     await finalizeAuthSession(signedInUser);
                 }
             } catch (error: unknown) {

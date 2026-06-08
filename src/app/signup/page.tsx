@@ -5,7 +5,7 @@ import { User as FirebaseUser } from 'firebase/auth';
 import { useAuth } from '@/firebase/provider';
 import { useUser } from '@/firebase/auth/use-user';
 import { useToast } from '@/hooks/use-toast';
-import { initializeNewUser, type NewUser } from '@/backend/actions';
+import { initializeNewUser, type NewUser } from '@/backend/initialize-new-user';
 import { finalizeAuthSession } from '@/firebase/auth/post-auth';
 import { consumeAuthRedirectResult } from '@/firebase/auth/redirect-handler';
 import { SignUp } from '@/components/auth/sign-up';

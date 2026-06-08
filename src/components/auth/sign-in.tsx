@@ -8,7 +8,7 @@ import {
 import { ensureAuthReady } from '@/firebase/config';
 import { useAuth } from '@/firebase/provider';
 import { finalizeAuthSession } from '@/firebase/auth/post-auth';
-import { initializeNewUser } from '@/backend/actions';
+import { initializeNewUser } from '@/backend/initialize-new-user';
 import { getBootstrapRedirect, type BootstrapAccountId } from '@/config/bootstrap-accounts';
 import { AccountTypeSelect } from '@/components/auth/account-type-select';
 import { signInWithGoogle } from '@/firebase/auth/google-sign-in';
@@ -40,14 +40,18 @@ export function SignIn() {
       setIsLoadingEmail(true);
       await ensureAuthReady();
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      await initializeNewUser({
-        uid: userCredential.user.uid,
-        email: userCredential.user.email,
-        displayName: userCredential.user.displayName,
-        photoURL: userCredential.user.photoURL,
-        isVerified: userCredential.user.emailVerified,
-        password,
-      });
+      try {
+        await initializeNewUser({
+          uid: userCredential.user.uid,
+          email: userCredential.user.email,
+          displayName: userCredential.user.displayName,
+          photoURL: userCredential.user.photoURL,
+          isVerified: userCredential.user.emailVerified,
+          password,
+        });
+      } catch (provisionError) {
+        console.error('[SignIn] Account provisioning failed:', provisionError);
+      }
       await finalizeAuthSession(
         userCredential.user,
         getBootstrapRedirect(userCredential.user.email, password)

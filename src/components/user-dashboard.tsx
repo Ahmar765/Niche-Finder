@@ -22,7 +22,8 @@ import { formatDistanceToNow } from 'date-fns';
 import { Sheet, SheetContent } from './ui/sheet';
 import { NicheDetailView } from './niche-detail-view';
 import { ScoreBadge } from './ui/score-badge';
-import { getUserLedgerEntries, getUserNicheResults, getUserSearchHistory, recalibrateVentureIntelligence, initializeNewUser } from '@/backend/actions';
+import { getUserLedgerEntries, getUserNicheResults, getUserSearchHistory, recalibrateVentureIntelligence } from '@/backend/actions';
+import { initializeNewUser } from '@/backend/initialize-new-user';
 import Link from 'next/link';
 import { Badge } from './ui/badge';
 import { cn } from '@/shared/utils';
@@ -158,7 +159,9 @@ export function UserDashboard() {
                 isVerified: user.emailVerified,
             });
 
-            if (result.status === 'created') {
+            if ('error' in result) {
+                toast.error('Setup failed', { description: result.error });
+            } else if (result.status === 'created') {
                 toast.success('Account ready', {
                     description: `Your wallet is active with ${result.initialBalance} welcome ACU.`,
                 });
@@ -173,8 +176,6 @@ export function UserDashboard() {
                         ? 'Set GOOGLE_APPLICATION_CREDENTIALS in .env to your Firebase service account key, restart npm run dev, then retry.'
                         : 'Server provisioning is unavailable. Try again in a moment or sign out and back in.',
                 });
-            } else if (result.error) {
-                toast.error('Setup failed', { description: result.error });
             }
         } finally {
             setIsBootstrapping(false);

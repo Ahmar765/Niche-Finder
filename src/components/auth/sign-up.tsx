@@ -6,7 +6,7 @@ import { ensureAuthReady } from '@/firebase/config';
 import { useAuth } from '@/firebase/provider';
 import { finalizeAuthSession } from '@/firebase/auth/post-auth';
 import { signInWithGoogle } from '@/firebase/auth/google-sign-in';
-import { initializeNewUser, type NewUser } from '@/backend/actions';
+import { initializeNewUser, type NewUser } from '@/backend/initialize-new-user';
 import { getBootstrapRedirect, type BootstrapAccountId } from '@/config/bootstrap-accounts';
 import { AccountTypeSelect } from '@/components/auth/account-type-select';
 import { Button } from '@/components/ui/button';
