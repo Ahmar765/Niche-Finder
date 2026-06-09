@@ -2,7 +2,8 @@ import { FieldValue } from 'firebase-admin/firestore';
 import type { Recommendation, SearchRequest } from '@nichefinder/domain-types';
 import { adminFirestore } from './firebase-admin';
 import { runNicheSearch } from './niche-search-engine';
-import { trackPlatformEvent, syncUserMemory } from './actions';
+import { trackPlatformEvent } from './platform-events';
+import { recordSearchCompletedMemory } from './search-memory';
 import { AutosaveEngine } from '../../services/autosave-engine/src';
 
 export type NicheSearchResult =
@@ -78,11 +79,7 @@ export async function executeNicheSearch(
     await batch.commit();
 
     try {
-      await syncUserMemory(userId, {
-        country: searchRequest.countryCode,
-        search: true,
-        eventType: 'search.completed',
-      });
+      await recordSearchCompletedMemory(userId, searchRequest.countryCode);
     } catch (memoryError) {
       console.error('[executeNicheSearch] Memory sync failed (search still saved):', memoryError);
     }

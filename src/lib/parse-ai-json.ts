@@ -15,16 +15,87 @@ export function extractJsonText(raw: string): string {
   return trimmed;
 }
 
+function closeTruncatedJson(text: string): string {
+  let s = text.trim();
+  let openBraces = 0;
+  let openBrackets = 0;
+  let inString = false;
+  let escape = false;
+
+  for (const char of s) {
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (char === '\\') {
+      escape = true;
+      continue;
+    }
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (!inString) {
+      if (char === '{') openBraces += 1;
+      else if (char === '}') openBraces -= 1;
+      else if (char === '[') openBrackets += 1;
+      else if (char === ']') openBrackets -= 1;
+    }
+  }
+
+  if (inString) s += '"';
+  while (openBrackets > 0) {
+    s += ']';
+    openBrackets -= 1;
+  }
+  while (openBraces > 0) {
+    s += '}';
+    openBraces -= 1;
+  }
+
+  return s;
+}
+
+function repairJsonText(text: string): string {
+  let s = text
+    .replace(/^\uFEFF/, '')
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
+
+  s = s.replace(/\/\*[\s\S]*?\*\//g, '');
+  s = s.replace(/\/\/[^\n\r]*/g, '');
+  s = s.replace(/\bundefined\b/g, 'null');
+  s = s.replace(/,\s*([}\]])/g, '$1');
+  s = s.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)(\s*:)/g, '$1"$2"$3');
+  s = s.replace(/:\s*'((?:\\'|[^'])*)'/g, (_match, value: string) => {
+    const escaped = value.replace(/"/g, '\\"');
+    return `: "${escaped}"`;
+  });
+
+  return closeTruncatedJson(s);
+}
+
+function tryParseJson<T>(text: string): T | null {
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
+}
+
 export function parseAiJson<T = Record<string, unknown>>(raw: string): T {
   const jsonText = extractJsonText(raw);
+  const candidates = [jsonText, repairJsonText(jsonText)];
 
-  try {
-    return JSON.parse(jsonText) as T;
-  } catch (error) {
-    throw new Error(
-      `AI response was not valid JSON: ${error instanceof Error ? error.message : 'parse failed'}`,
-    );
+  for (const candidate of candidates) {
+    const parsed = tryParseJson<T>(candidate);
+    if (parsed !== null) return parsed;
   }
+
+  throw new Error(
+    'AI response was not valid JSON. The model returned malformed data — please try again.',
+  );
 }
 
 function slugify(value: string): string {

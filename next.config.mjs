@@ -1,18 +1,14 @@
-import withPWA from 'next-pwa';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { firebaseEnvFromHosting } from './src/firebase/next-env.mjs';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const firebaseEnv = firebaseEnvFromHosting();
-
-const pwaConfig = withPWA({
-  dest: 'public',
-  register: true,
-  skipWaiting: true,
-  disable: process.env.NODE_ENV === 'development',
-});
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  ...pwaConfig,
+  output: 'standalone',
+  outputFileTracingRoot: path.join(__dirname),
   env: {
     ...firebaseEnv,
   },

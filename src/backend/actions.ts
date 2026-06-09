@@ -23,6 +23,7 @@ import { generateBlogPost } from '@/ai/flows/generate-blog-post-flow';
 import { NICHE_FINDER_ACU_ACTIONS, type NicheFinderAcuActionKey } from '@/config/acuActions';
 import { ACU_TOP_UP_PACKAGES } from '@/config/acuPackages';
 import { handleBilledOperation } from './billing';
+import { trackPlatformEvent as persistPlatformEvent } from './platform-events';
 import { AutosaveEngine } from '../../services/autosave-engine/src';
 import Stripe from 'stripe';
 import { serializeFirestoreDoc } from './serialize-firestore';
@@ -71,26 +72,14 @@ export type { NewUser } from './initialize-new-user';
 /**
  * OS CORE: Immutable Platform Event Ledger
  */
-export async function trackPlatformEvent(userId: string, eventType: PlatformEventType, payload: any, projectId?: string, decisionId?: string) {
-    const eventId = uuidv4();
-    try {
-        await adminFirestore.collection('platform_events').doc(eventId).set({
-            id: eventId,
-            userId,
-            projectId: projectId || null,
-            eventType,
-            payload,
-            createdAt: FieldValue.serverTimestamp(),
-            linkage: {
-                decisionId: decisionId || null,
-                outcomeStatus: 'pending'
-            }
-        });
-        return eventId;
-    } catch (e) {
-        console.error(`[Security Alert] Ledger failure:`, e);
-        return null;
-    }
+export async function trackPlatformEvent(
+  userId: string,
+  eventType: PlatformEventType,
+  payload: unknown,
+  projectId?: string,
+  decisionId?: string,
+) {
+  return persistPlatformEvent(userId, eventType, payload, projectId, decisionId);
 }
 
 /**

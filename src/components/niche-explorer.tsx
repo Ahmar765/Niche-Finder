@@ -205,7 +205,17 @@ export function NicheExplorer() {
             body: JSON.stringify({ searchRequest, isInvestorMode: data.isInvestorMode }),
         });
 
-        const result = (await response.json()) as
+        const rawBody = await response.text();
+        const contentType = response.headers.get('content-type') ?? '';
+        if (!contentType.includes('application/json')) {
+            throw new Error(
+                response.status === 404
+                    ? 'Search service is unavailable. Please refresh and try again.'
+                    : `Search service returned an unexpected response (${response.status}). ${rawBody.startsWith('<!') ? 'The server may still be deploying.' : rawBody.slice(0, 120)}`,
+            );
+        }
+
+        const result = JSON.parse(rawBody) as
             | { recommendations: Recommendation[] }
             | { error: string };
 

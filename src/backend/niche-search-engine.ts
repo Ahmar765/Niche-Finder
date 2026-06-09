@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { handleBilledOperation } from '@/backend/billing';
-import { createUniversalAIClient } from '@/backend/ai/universal-ai-provider';
+import { fetchJsonText } from '@/backend/ai/fetch-json-text';
 import type { Recommendation, SearchRequest, VentureUserMemory } from '@nichefinder/domain-types';
 import { getAgentDirectives } from '@/backend/ai/agent-manifest';
 import { normalizeNicheSearchAiOutput, parseAiJson } from '@/lib/parse-ai-json';
@@ -71,7 +71,11 @@ const generatePrompt = (input: SearchRequest, isInvestorMode: boolean, memory?: 
         - Commercial impact (estimated ROI/scale).
         - Operational impact (effort level).
 
-        Hard Rule: Return strict JSON only. No prose outside JSON.
+        Hard Rules:
+        - Return strict JSON only. No prose, markdown, or code fences.
+        - Every property name must use double quotes.
+        - No trailing commas. Use null instead of undefined.
+        - Keep string values concise; escape internal double quotes.
     `;
 
   const userPrompt = `
@@ -97,9 +101,13 @@ const generatePrompt = (input: SearchRequest, isInvestorMode: boolean, memory?: 
                  },
                  "breakthroughPotentialScore": 0
               },
-              "rawScores": {},
+              "rawScores": {
+                "demand": 0,
+                "competition": 0,
+                "timing": 0
+              },
               "explanation": {
-                 "breakthroughRationale": "string (mandatory if breakthrough mode and applicable)"
+                 "breakthroughRationale": "string or null"
               },
               "decisionSupport": {
                 "bestOption": "string",
@@ -125,17 +133,29 @@ export async function runNicheSearch(
   const { systemPrompt, userPrompt } = generatePrompt(input, isInvestorMode, memory);
 
   const aiOperation = async () => {
-    const aiClient = createUniversalAIClient();
-    return aiClient.generateText({
-      systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }],
-      jsonMode: true,
-      allowFallback: true,
-      temperature: input.searchPriority === 'breakthrough' ? 0.9 : 0.8,
-      maxOutputTokens: 4096,
-      featureType: 'decision_intelligence',
-      tier: isInvestorMode ? 'enterprise' : 'decision',
-    });
+    const temperature = input.searchPriority === 'breakthrough' ? 0.7 : 0.5;
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const result = await fetchJsonText({
+        systemPrompt,
+        userPrompt:
+          attempt === 0
+            ? userPrompt
+            : `${userPrompt}\n\nYour previous response was invalid JSON. Reply again with ONLY a valid JSON object matching the schema. Double-quote all keys. No trailing commas.`,
+        temperature: attempt === 0 ? temperature : 0.2,
+        maxOutputTokens: 4096,
+      });
+
+      try {
+        parseAiJson<Record<string, unknown>>(result.text);
+        return { text: result.text, provider: result.provider, model: result.model };
+      } catch (parseError) {
+        if (attempt === 1) throw parseError;
+        console.warn('[runNicheSearch] Invalid JSON from AI, retrying once:', parseError);
+      }
+    }
+
+    throw new Error('AI response was not valid JSON.');
   };
 
   const { result, billingDetails } = await handleBilledOperation({

@@ -5,7 +5,7 @@ import { adminFirestore } from '@/backend/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import { ACU_TOP_UP_PACKAGES } from '@/config/acuPackages';
-import { trackPlatformEvent } from '@/backend/actions';
+import { trackPlatformEvent } from '@/backend/platform-events';
 
 export async function POST(req: Request) {
   try {
