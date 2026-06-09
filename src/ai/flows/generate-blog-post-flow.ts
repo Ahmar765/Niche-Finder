@@ -6,6 +6,8 @@
  */
 import { z } from 'zod';
 import { handleBilledOperation } from '@/backend/actions';
+import { adminFirestore } from '@/backend/firebase-admin';
+import { ADMIN_ROLES } from '@/config/bootstrap-accounts';
 import type { NicheFinderAcuActionKey } from '@/config/acuActions';
 import { UniversalAIClient } from '@/backend/ai/universal-ai-provider';
 import { normalizeBlogPostAiOutput, parseAiJson } from '@/lib/parse-ai-json';
@@ -72,11 +74,25 @@ export async function generateBlogPost(userId: string, topic: BlogPostInput) {
   };
 
   try {
-    const { result, billingDetails } = await handleBilledOperation({
-      userId,
-      actionKey,
-      aiOperation,
-    });
+    const userDoc = await adminFirestore.collection('users').doc(userId).get();
+    const roles = (userDoc.data()?.roles ?? []) as string[];
+    const isAdmin = roles.some((role) => ADMIN_ROLES.includes(role as (typeof ADMIN_ROLES)[number]));
+
+    let result: { text: string };
+    let billingDetails: { finalCost: number; balanceAfter: { totalAvailableAcu: number } } | undefined;
+
+    if (isAdmin) {
+      result = await aiOperation();
+      billingDetails = { finalCost: 0, balanceAfter: { totalAvailableAcu: 0 } };
+    } else {
+      const billed = await handleBilledOperation({
+        userId,
+        actionKey,
+        aiOperation,
+      });
+      result = billed.result;
+      billingDetails = billed.billingDetails;
+    }
 
     const parsed = parseAiJson(result.text);
     const normalized = normalizeBlogPostAiOutput(parsed);

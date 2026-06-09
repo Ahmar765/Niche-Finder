@@ -70,7 +70,11 @@ const GovernanceIntelligenceWidget = ({ analytics }: { analytics: PlatformAnalyt
     </Card>
 );
 
-export function GovDashboard() {
+type GovDashboardProps = {
+  embedded?: boolean;
+};
+
+export function GovDashboard({ embedded }: GovDashboardProps) {
   const [analytics, setAnalytics] = useState<PlatformAnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -94,27 +98,29 @@ export function GovDashboard() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-            <div className="inline-flex items-center gap-2 px-2 py-0.5 rounded bg-primary/10 border border-primary/20 text-[10px] font-bold text-primary mb-2">
-                <ShieldAlert className="h-3 w-3" />
-                RESTRICTED: SUPER ADMIN GOVERNANCE MODE
-            </div>
-            <h1 className="font-headline text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
-                <Briefcase className="h-7 w-7" />
-                Venture OS Governance
-            </h1>
-            <p className="text-lg text-muted-foreground">
-                Strategic oversight of platform adoption and intelligence performance.
-            </p>
+      {!embedded && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+              <div className="inline-flex items-center gap-2 px-2 py-0.5 rounded bg-primary/10 border border-primary/20 text-[10px] font-bold text-primary mb-2">
+                  <ShieldAlert className="h-3 w-3" />
+                  RESTRICTED: SUPER ADMIN GOVERNANCE MODE
+              </div>
+              <h1 className="font-headline text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
+                  <Briefcase className="h-7 w-7" />
+                  Venture OS Governance
+              </h1>
+              <p className="text-lg text-muted-foreground">
+                  Strategic oversight of platform adoption and intelligence performance.
+              </p>
+          </div>
+          <div className="flex items-center gap-3">
+               <div className="flex items-center gap-1.5 px-3 py-1 rounded bg-green-500/10 border border-green-500/20 text-[10px] font-bold text-green-500">
+                  <Activity className="h-3.5 w-3.5" />
+                  INTELLIGENCE NODES: ONLINE
+              </div>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-             <div className="flex items-center gap-1.5 px-3 py-1 rounded bg-green-500/10 border border-green-500/20 text-[10px] font-bold text-green-500">
-                <Activity className="h-3.5 w-3.5" />
-                INTELLIGENCE NODES: ONLINE
-            </div>
-        </div>
-      </div>
+      )}
 
       {error && <Alert variant="destructive" className="border-red-500/50 bg-red-500/5"><AlertTitle>System Access Interrupted</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
 

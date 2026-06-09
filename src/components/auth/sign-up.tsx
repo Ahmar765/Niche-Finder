@@ -7,7 +7,7 @@ import { useAuth } from '@/firebase/provider';
 import { finalizeAuthSession } from '@/firebase/auth/post-auth';
 import { signInWithGoogle } from '@/firebase/auth/google-sign-in';
 import { initializeNewUser, type NewUser } from '@/backend/initialize-new-user';
-import { getBootstrapRedirect, type BootstrapAccountId } from '@/config/bootstrap-accounts';
+import { getBootstrapRedirect, getBootstrapAccount, type BootstrapAccountId } from '@/config/bootstrap-accounts';
 import { AccountTypeSelect } from '@/components/auth/account-type-select';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -32,11 +32,18 @@ export function SignUp({ onInitializeUser }: { onInitializeUser?: (user: NewUser
   const [isLoadingGoogle, setIsLoadingGoogle] = useState(false);
   const [isLoadingEmail, setIsLoadingEmail] = useState(false);
   const [accountType, setAccountType] = useState<BootstrapAccountId>('operator');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState(() => getBootstrapAccount('operator').email);
+  const [password, setPassword] = useState(() => getBootstrapAccount('operator').password);
   
   const auth = useAuth();
   const { toast } = useToast();
+
+  const handleAccountTypeChange = (next: BootstrapAccountId) => {
+    setAccountType(next);
+    const account = getBootstrapAccount(next);
+    setEmail(account.email);
+    setPassword(account.password);
+  };
 
   const handleGoogleSignUp = async () => {
     try {
@@ -111,7 +118,7 @@ export function SignUp({ onInitializeUser }: { onInitializeUser?: (user: NewUser
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <AccountTypeSelect value={accountType} onChange={setAccountType} />
+        <AccountTypeSelect value={accountType} onChange={handleAccountTypeChange} />
 
         <form onSubmit={handleEmailSignUp} className="space-y-4">
           <div className="space-y-2">

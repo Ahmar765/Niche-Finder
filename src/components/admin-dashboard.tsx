@@ -82,7 +82,12 @@ const SystemIntelligenceWidget = () => (
     </Card>
 );
 
-export function AdminDashboard() {
+type AdminDashboardProps = {
+  embedded?: boolean;
+  defaultTab?: 'support' | 'blog' | 'users' | 'ledger';
+};
+
+export function AdminDashboard({ embedded, defaultTab = 'support' }: AdminDashboardProps) {
   const { toast } = useToast();
   const firestore = useFirestore();
   const { user } = useUser();
@@ -224,31 +229,33 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="space-y-2">
-            <h1 className="font-headline text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
-            <ShieldCheck className="h-7 w-7 text-white" />
-            Admin Control Panel
-            </h1>
-            <p className="text-lg text-muted-foreground">
-            Manage users, credits, and monitor system activity.
-            </p>
+      {!embedded && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="space-y-2">
+              <h1 className="font-headline text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
+              <ShieldCheck className="h-7 w-7 text-white" />
+              Admin Control Panel
+              </h1>
+              <p className="text-lg text-muted-foreground">
+              Manage users, credits, and monitor system activity.
+              </p>
+          </div>
+          <div className="flex items-center gap-3">
+               <div className="flex items-center gap-1.5 px-3 py-1 rounded bg-green-500/10 border border-green-500/20 text-[10px] font-bold text-green-500">
+                  <Save className="h-3 w-3" />
+                  SYSTEM SYNC ACTIVE
+              </div>
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded bg-primary/10 border border-primary/20 text-[10px] font-bold text-primary">
+                  <Activity className="h-3 w-3" />
+                  HEALTH: OPTIMAL
+              </div>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-             <div className="flex items-center gap-1.5 px-3 py-1 rounded bg-green-500/10 border border-green-500/20 text-[10px] font-bold text-green-500">
-                <Save className="h-3 w-3" />
-                SYSTEM SYNC ACTIVE
-            </div>
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded bg-primary/10 border border-primary/20 text-[10px] font-bold text-primary">
-                <Activity className="h-3 w-3" />
-                HEALTH: OPTIMAL
-            </div>
-        </div>
-      </div>
+      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-            <Tabs defaultValue="support" className="w-full">
+      <div className={cn('grid grid-cols-1 gap-8', !embedded && 'lg:grid-cols-3')}>
+        <div className={cn(!embedded && 'lg:col-span-2')}>
+            <Tabs defaultValue={defaultTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="support" className="gap-1"><MessageSquare className="h-4 w-4"/>Support</TabsTrigger>
                     <TabsTrigger value="blog" className="gap-1"><Newspaper className="h-4 w-4" />Blog</TabsTrigger>
@@ -536,6 +543,7 @@ export function AdminDashboard() {
             </Tabs>
         </div>
 
+        {!embedded && (
         <div className="space-y-8">
             <SystemIntelligenceWidget />
             
@@ -567,6 +575,7 @@ export function AdminDashboard() {
                 </CardContent>
             </Card>
         </div>
+        )}
       </div>
     </div>
   );

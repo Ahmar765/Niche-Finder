@@ -3,7 +3,7 @@
 
 import { useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { Coins, LogOut, Sparkles, User, Briefcase, LogIn } from 'lucide-react';
+import { Coins, LogOut, Sparkles, User, Briefcase, LogIn, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { signOut } from 'firebase/auth';
 import { doc } from 'firebase/firestore';
@@ -47,6 +47,13 @@ const AppHeader = () => {
     const isSuperAdmin = useMemo(() => {
         if (!userData?.roles) return false;
         return userData.roles.includes('super_admin');
+    }, [userData]);
+
+    const isAnyAdmin = useMemo(() => {
+        if (!userData?.roles) return false;
+        return userData.roles.some((role: string) =>
+            ['admin', 'super_admin', 'finance_admin', 'support_admin'].includes(role)
+        );
     }, [userData]);
 
     const handleSignOut = () => {
@@ -127,9 +134,17 @@ const AppHeader = () => {
                             <User className="mr-2 h-4 w-4" />
                             <span>Profile</span>
                         </DropdownMenuItem>
+                        {isAnyAdmin && (
+                        <DropdownMenuItem asChild>
+                            <Link href="/admin">
+                            <ShieldCheck className="mr-2 h-4 w-4" />
+                            <span>Command Center</span>
+                            </Link>
+                        </DropdownMenuItem>
+                        )}
                         {isSuperAdmin && (
                         <DropdownMenuItem asChild>
-                            <Link href="/gov">
+                            <Link href="/admin?section=governance">
                             <Briefcase className="mr-2 h-4 w-4" />
                             <span>{t('header.governmentMode')}</span>
                             </Link>
