@@ -3,7 +3,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { UniversalAIClient } from '@/backend/ai/universal-ai-provider';
-import { handleBilledOperation } from '@/backend/actions';
+import { handleBilledOperation } from '@/backend/billing';
 import type { Recommendation, SearchRequest, VentureUserMemory } from '@nichefinder/domain-types';
 import { getAgentDirectives } from '@/backend/ai/agent-manifest';
 import { normalizeNicheSearchAiOutput, parseAiJson } from '@/lib/parse-ai-json';

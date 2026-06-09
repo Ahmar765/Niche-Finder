@@ -5,7 +5,7 @@
  * This flow is now connected to the ACU billing system.
  */
 import { z } from 'zod';
-import { handleBilledOperation } from '@/backend/actions';
+import { handleBilledOperation } from '@/backend/billing';
 import { adminFirestore } from '@/backend/firebase-admin';
 import { ADMIN_ROLES } from '@/config/bootstrap-accounts';
 import type { NicheFinderAcuActionKey } from '@/config/acuActions';

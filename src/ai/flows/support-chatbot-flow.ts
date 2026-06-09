@@ -5,7 +5,7 @@
  */
 import { z } from 'zod';
 import { UniversalAIClient } from '@/backend/ai/universal-ai-provider';
-import { handleBilledOperation } from '@/backend/actions';
+import { handleBilledOperation } from '@/backend/billing';
 import type { NicheFinderAcuActionKey } from '@/config/acuActions';
 import { ACU_SYSTEM } from '@/config/acuSystem';
 import type { VentureUserMemory } from '@nichefinder/domain-types';
