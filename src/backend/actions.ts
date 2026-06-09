@@ -24,6 +24,7 @@ import { NICHE_FINDER_ACU_ACTIONS, type NicheFinderAcuActionKey } from '@/config
 import { ACU_TOP_UP_PACKAGES } from '@/config/acuPackages';
 import { handleBilledOperation } from './billing';
 import { trackPlatformEvent as persistPlatformEvent } from './platform-events';
+import { executeUnlockNiche } from './unlock-niche-service';
 import { AutosaveEngine } from '../../services/autosave-engine/src';
 import Stripe from 'stripe';
 import { serializeFirestoreDoc } from './serialize-firestore';
@@ -232,77 +233,7 @@ export async function unlockNiche(nicheId: string) {
     const cookieStore = await cookies();
     const userId = cookieStore.get('userId')?.value;
     if (!userId) return { error: "User not authenticated." };
-    
-    try {
-        const nicheDoc = await adminFirestore.collection('niche_results').doc(nicheId).get();
-        if (!nicheDoc.exists) throw new Error("Niche data not found.");
-        const details = nicheDoc.data() as Recommendation;
-
-        const eventId = await trackPlatformEvent(userId, 'niche.selected', { nicheId, title: details.niche.title });
-
-        const { billingDetails } = await handleBilledOperation({
-            userId,
-            actionKey: 'unlock_full_opportunity',
-            aiOperation: async () => {
-                const batch = adminFirestore.batch();
-                const updatedMetadata = AutosaveEngine.prepareMetadata(details.autosave?.version || 0, userId, "saved", "Niche unlocked.", eventId || undefined);
-
-                batch.update(adminFirestore.collection('niche_results').doc(nicheId), {
-                    is_unlocked: true, 
-                    unlocked_at: FieldValue.serverTimestamp(),
-                    acu_spent_unlock: 150, 
-                    updatedAt: FieldValue.serverTimestamp(),
-                    autosave: updatedMetadata
-                });
-
-                const workspaceMemory: WorkspaceMemory = {
-                    workspaceId: nicheId, 
-                    documents: ['initial_niche_report'], 
-                    templates: [],
-                    businessRules: ['Budget Max $10k equivalent'], 
-                    historicalDecisions: [],
-                    commercialAssumptions: { startupLimit: 10000, primaryMarket: details.niche.countryCode },
-                };
-
-                const processMemory: ProcessMemory = {
-                    processId: nicheId, 
-                    stage: 'unlocked', 
-                    completed: ['unlock'], 
-                    pending: [], 
-                    blocked: [], 
-                    completedActions: ['unlock']
-                };
-
-                const projectRef = adminFirestore.collection('venture_projects').doc(nicheId);
-                batch.set(projectRef, {
-                    id: nicheId, 
-                    userId, 
-                    nicheId, 
-                    title: details.niche.title,
-                    country: details.niche.countryCode, 
-                    sector: details.niche.sectorSlug,
-                    status: 'unlocked', 
-                    confidenceScore: details.scores.overallConfidenceScore,
-                    totalAcuSpent: 150, 
-                    workspaceMemory, 
-                    processMemory, 
-                    assets: {}, 
-                    tags: [],
-                    createdAt: new Date().toISOString(), 
-                    updatedAt: new Date().toISOString(),
-                    autosave: AutosaveEngine.prepareMetadata(0, userId, "saved", "Repository initialized.", eventId || undefined)
-                });
-
-                await batch.commit();
-                return { success: true };
-            },
-        });
-
-        await syncUserMemory(userId, { unlock: true, nicheId, eventType: 'niche.selected' });
-        return { success: true, newBalance: billingDetails.balanceAfter.totalAvailableAcu };
-    } catch (error: any) {
-        return { error: error.message };
-    }
+    return executeUnlockNiche(userId, nicheId);
 }
 
 export async function generateProjectAsset(projectId: string, assetType: AssetType) {

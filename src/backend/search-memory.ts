@@ -85,3 +85,28 @@ export async function recordSearchCompletedMemory(userId: string, countryCode: s
 
   await memoryRef.set(currentMemory, { merge: true });
 }
+
+/** Lightweight post-unlock memory update without AI recalibration (safe for API routes). */
+export async function recordNicheUnlockedMemory(userId: string, nicheId: string) {
+  const memoryRef = adminFirestore.collection('user_memory').doc(userId);
+  const doc = await memoryRef.get();
+  const currentMemory = doc.exists ? (doc.data() as VentureUserMemory) : buildInitialMemory(userId);
+
+  currentMemory.behaviour.totalUnlocks += 1;
+  currentMemory.behaviour.acceptedNicheIds.push(nicheId);
+  currentMemory.userMemory.acceptedRecommendations.push(nicheId);
+  currentMemory.behaviour.lastActive = new Date().toISOString();
+  currentMemory.updatedAt = new Date().toISOString();
+
+  const eventId = await trackPlatformEvent(userId, 'niche.selected', { nicheId });
+
+  currentMemory.autosave = AutosaveEngine.prepareMetadata(
+    currentMemory.autosave?.version || 0,
+    userId,
+    'saved',
+    'Unlock recorded.',
+    eventId || undefined,
+  );
+
+  await memoryRef.set(currentMemory, { merge: true });
+}

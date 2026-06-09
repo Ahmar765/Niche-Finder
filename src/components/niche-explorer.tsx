@@ -104,6 +104,7 @@ export function NicheExplorer() {
   const [nicheIdeas, setNicheIdeas] = useState<Recommendation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedNicheId, setSelectedNicheId] = useState<string | null>(null);
+  const [selectedNichePreview, setSelectedNichePreview] = useState<Recommendation | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isAutosaving, setIsAutosaving] = useState(false);
   
@@ -233,8 +234,9 @@ export function NicheExplorer() {
     }
   }
 
-  const handleNicheClick = (nicheId: string) => {
-    setSelectedNicheId(nicheId);
+  const handleNicheClick = (rec: Recommendation) => {
+    setSelectedNicheId(rec.niche.id);
+    setSelectedNichePreview(rec);
     setIsSheetOpen(true);
   };
 
@@ -548,9 +550,11 @@ export function NicheExplorer() {
         </CardContent>
       </Card>
       
-      <Sheet open={isSheetOpen} onOpenChange={(open) => { setIsSheetOpen(open); if(!open) setSelectedNicheId(null); }}>
+      <Sheet open={isSheetOpen} onOpenChange={(open) => { setIsSheetOpen(open); if (!open) { setSelectedNicheId(null); setSelectedNichePreview(null); } }}>
         <SheetContent className="sm:max-w-2xl w-full p-0">
-          {selectedNicheId && <NicheDetailView nicheId={selectedNicheId} />}
+          {selectedNicheId && (
+            <NicheDetailView nicheId={selectedNicheId} preview={selectedNichePreview} />
+          )}
         </SheetContent>
       </Sheet>
 
@@ -569,7 +573,7 @@ export function NicheExplorer() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {nicheIdeas.map((rec) => (
-                 <Card key={rec.recommendationId} className="cursor-pointer group hover:border-primary/80 transition-all duration-300 flex flex-col bg-gradient-to-br from-card to-secondary/30 shadow-md border-border/40 relative overflow-hidden" onClick={() => handleNicheClick(rec.niche.id)}>
+                 <Card key={rec.recommendationId} className="cursor-pointer group hover:border-primary/80 transition-all duration-300 flex flex-col bg-gradient-to-br from-card to-secondary/30 shadow-md border-border/40 relative overflow-hidden" onClick={() => handleNicheClick(rec)}>
                     <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity"><ArrowUpRight className="h-4 w-4 text-primary" /></div>
                     <CardHeader className="pb-3">
                         <div className="flex justify-between items-start gap-4">

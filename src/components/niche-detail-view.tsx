@@ -8,9 +8,9 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { doc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useLocale } from '@/i18n';
-import { unlockNiche, generateProjectAsset, rejectNiche } from '@/backend/actions';
 import { getAcuCost } from '@/config/acuActions';
 import type { AssetType } from '@/ai/flows/generate-venture-asset-flow';
+import { generateProjectAsset, rejectNiche } from '@/backend/actions';
 
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -48,6 +48,7 @@ const AutosaveStatusWidget = ({ status, version, lastSaved }: { status?: string,
 
 type NicheDetailViewProps = {
   nicheId: string;
+  preview?: Recommendation | null;
 };
 
 const DecisionIntelligenceItem = ({ icon: Icon, label, value, colorClass }: { icon: any, label: string, value: string, colorClass?: string }) => (
@@ -70,7 +71,7 @@ const ExecutiveBriefItem = ({ icon: Icon, label, value, colorClass, borderClass 
     </div>
 );
 
-export function NicheDetailView({ nicheId }: NicheDetailViewProps) {
+export function NicheDetailView({ nicheId, preview }: NicheDetailViewProps) {
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
   const [generatingAsset, setGeneratingAsset] = useState<AssetType | null>(null);
@@ -82,8 +83,9 @@ export function NicheDetailView({ nicheId }: NicheDetailViewProps) {
 
   const nicheDocRef = useMemo(() => (firestore && nicheId ? doc(firestore, 'niche_results', nicheId) : null), [firestore, nicheId]);
   const nicheDoc = useDoc(nicheDocRef);
-  const details = nicheDoc.data as Recommendation | null;
-  const isNicheLoading = nicheDoc.isLoading;
+  const firestoreDetails = nicheDoc.data as Recommendation | null;
+  const details = firestoreDetails ?? preview ?? null;
+  const isNicheLoading = nicheDoc.isLoading && !preview;
 
   const projectDocRef = useMemo(() => (firestore && nicheId ? doc(firestore, 'venture_projects', nicheId) : null), [firestore, nicheId]);
   const projectDoc = useDoc(projectDocRef);
@@ -102,11 +104,38 @@ export function NicheDetailView({ nicheId }: NicheDetailViewProps) {
     }
     setIsUnlocking(true);
     try {
-        const result = await unlockNiche(nicheId);
-        if ('error' in result) throw new Error(result.error);
-        toast({ title: t('toasts.unlockSuccess'), description: `Venture repository initialized.` });
-    } catch (error: any) {
-        toast({ variant: 'destructive', title: t('toasts.unlockFailed'), description: error.message });
+        const response = await fetch('/api/niche-unlock', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ nicheId }),
+        });
+
+        const rawBody = await response.text();
+        const contentType = response.headers.get('content-type') ?? '';
+        if (!contentType.includes('application/json')) {
+            throw new Error(
+                response.status === 404
+                    ? 'Unlock service is unavailable. Please refresh and try again.'
+                    : 'Unlock failed — the server returned an unexpected response.',
+            );
+        }
+
+        const result = JSON.parse(rawBody) as { success?: boolean; newBalance?: number; error?: string };
+
+        if (!response.ok || result.error) {
+            throw new Error(result.error ?? 'Unlock request failed.');
+        }
+
+        toast({
+            title: t('toasts.unlockSuccess'),
+            description: result.newBalance != null
+                ? `Venture repository initialized. Balance: ${result.newBalance} ACU`
+                : 'Venture repository initialized.',
+        });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Unlock failed';
+        toast({ variant: 'destructive', title: t('toasts.unlockFailed'), description: message });
     } finally {
         setIsUnlocking(false);
     }
