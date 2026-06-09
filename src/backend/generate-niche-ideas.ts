@@ -4,8 +4,6 @@ import { cookies } from 'next/headers';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { SearchRequest } from '@nichefinder/domain-types';
 import { adminFirestore } from './firebase-admin';
-import { generateNicheIdeasFlow } from '@/ai/flows/generate-niche-ideas-flow';
-import { syncUserMemory, trackPlatformEvent } from './actions';
 import { AutosaveEngine } from '../../services/autosave-engine/src';
 
 export async function generateNicheIdeas(searchRequest: SearchRequest, isInvestorMode?: boolean) {
@@ -23,14 +21,12 @@ export async function generateNicheIdeas(searchRequest: SearchRequest, isInvesto
     };
   }
 
+  const { trackPlatformEvent, syncUserMemory } = await import('./actions');
   const eventId = await trackPlatformEvent(userId, 'search.created', { searchRequest, isInvestorMode });
 
   try {
-    const { recommendations } = await generateNicheIdeasFlow(
-      userId,
-      searchRequest,
-      isInvestorMode || false,
-    );
+    const { runNicheSearch } = await import('./niche-search-engine');
+    const { recommendations } = await runNicheSearch(userId, searchRequest, isInvestorMode || false);
 
     if (!recommendations.length) {
       return { error: 'No niche ideas were generated. Try a broader search or different country.' };
