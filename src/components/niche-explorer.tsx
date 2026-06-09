@@ -26,7 +26,6 @@ import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import Link from 'next/link';
 import { useLocale } from '@/i18n';
-import { generateNicheIdeas } from '@/backend/generate-niche-ideas';
 import { completeClientAuth } from '@/firebase/auth/post-auth';
 import type { Recommendation, SearchRequest } from '@nichefinder/domain-types';
 import { ScoreBadge } from './ui/score-badge';
@@ -199,9 +198,22 @@ export function NicheExplorer() {
     };
 
     try {
-        const result = await generateNicheIdeas(searchRequest, data.isInvestorMode);
-        if ('error' in result) throw new Error(result.error);
-        if (result && result.recommendations) {
+        const response = await fetch('/api/niche-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ searchRequest, isInvestorMode: data.isInvestorMode }),
+        });
+
+        const result = (await response.json()) as
+            | { recommendations: Recommendation[] }
+            | { error: string };
+
+        if (!response.ok || 'error' in result) {
+            throw new Error('error' in result ? result.error : 'Search request failed.');
+        }
+
+        if (result.recommendations) {
             setNicheIdeas(result.recommendations.sort((a, b) => a.rank - b.rank));
         }
     } catch (error: any) {

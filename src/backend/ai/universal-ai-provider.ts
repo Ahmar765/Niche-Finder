@@ -407,6 +407,10 @@ export class UniversalAIClient {
 
 
 // --- Express/Next.js-safe helper ---
+export function createUniversalAIClient(): UniversalAIClient {
+  return new UniversalAIClient();
+}
+
 export async function generatePlatformText(input: {
   prompt: string;
   systemPrompt?: string;

@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { handleBilledOperation } from '@/backend/billing';
+import { createUniversalAIClient } from '@/backend/ai/universal-ai-provider';
 import type { Recommendation, SearchRequest, VentureUserMemory } from '@nichefinder/domain-types';
 import { getAgentDirectives } from '@/backend/ai/agent-manifest';
 import { normalizeNicheSearchAiOutput, parseAiJson } from '@/lib/parse-ai-json';
@@ -124,8 +125,7 @@ export async function runNicheSearch(
   const { systemPrompt, userPrompt } = generatePrompt(input, isInvestorMode, memory);
 
   const aiOperation = async () => {
-    const { UniversalAIClient } = await import('@/backend/ai/universal-ai-provider');
-    const aiClient = new UniversalAIClient();
+    const aiClient = createUniversalAIClient();
     return aiClient.generateText({
       systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
