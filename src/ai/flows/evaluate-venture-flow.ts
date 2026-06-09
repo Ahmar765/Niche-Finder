@@ -9,6 +9,7 @@
 
 import { z } from 'zod';
 import { UniversalAIClient } from '@/backend/ai/universal-ai-provider';
+import { parseAiJson } from '@/lib/parse-ai-json';
 import type { VentureUserMemory } from '@nichefinder/domain-types';
 import { AiOperatingOutputSchema } from '@nichefinder/domain-types';
 import { getAgentDirectives } from '@/backend/ai/agent-manifest';
@@ -112,7 +113,7 @@ export async function evaluateVentureState(memory: VentureUserMemory): Promise<E
       temperature: 0.2,
     });
 
-    return EvaluateVentureOutputSchema.parse(JSON.parse(result.text));
+    return EvaluateVentureOutputSchema.parse(parseAiJson(result.text));
   } catch (error) {
     console.error('[EvaluateVentureFlow] Failed:', error);
     // Fallback logic

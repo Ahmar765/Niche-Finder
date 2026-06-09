@@ -16,7 +16,6 @@ import type {
     PlatformEventType
 } from '@nichefinder/domain-types';
 import { v4 as uuidv4 } from 'uuid';
-import { generateNicheIdeasFlow } from '@/ai/flows/generate-niche-ideas-flow';
 import { getSupportChatResponse } from '@/ai/flows/support-chatbot-flow';
 import { evaluateVentureState } from '@/ai/flows/evaluate-venture-flow';
 import { generateVentureAsset, type AssetType } from '@/ai/flows/generate-venture-asset-flow';
@@ -235,53 +234,8 @@ export async function syncUserMemory(userId: string, update: {
 }
 
 export async function generateNicheIdeas(searchRequest: SearchRequest, isInvestorMode?: boolean) {
-  const cookieStore = await cookies();
-  const userId = cookieStore.get('userId')?.value;
-  if (!userId) return { error: "User not authenticated." };
-
-  const eventId = await trackPlatformEvent(userId, 'search.created', { searchRequest, isInvestorMode });
-
-  try {
-    const { recommendations } = await generateNicheIdeasFlow(userId, searchRequest, isInvestorMode || false);
-
-    const batch = adminFirestore.batch();
-    const searchSessionRef = adminFirestore.collection('search_sessions').doc();
-    batch.set(searchSessionRef, {
-        user_id: userId, 
-        input_payload: searchRequest,
-        ai_results_summary: `Generated ${recommendations.length} niche ideas.`,
-        created_at: FieldValue.serverTimestamp(),
-    });
-
-    recommendations.forEach(rec => {
-        batch.set(adminFirestore.collection('niche_results').doc(rec.niche.id), {
-            ...rec, 
-            user_id: userId, 
-            search_session_id: searchSessionRef.id,
-            is_unlocked: false, 
-            unlocked_at: null,
-            tags: [searchRequest.countryCode, rec.niche.sectorSlug, 'idea'],
-            autosave: AutosaveEngine.prepareMetadata(0, "System:Orchestrator", "saved", "Discovery run complete.", eventId || undefined)
-        });
-    });
-
-    await batch.commit();
-    
-    await syncUserMemory(userId, { 
-        country: searchRequest.countryCode, 
-        search: true, 
-        eventType: 'search.completed' 
-    });
-    return { recommendations };
-    } catch(error: any) {
-    const message =
-      error.message === 'INSUFFICIENT_ACUS'
-        ? 'Not enough ACU credits for this search. Your welcome balance covers one niche search (100 ACU).'
-        : error.message === 'INSUFFICIENT_PAID_ACUS'
-          ? 'This action requires paid credits. Add credits to continue.'
-          : error.message;
-    return { error: message };
-  }
+  const { generateNicheIdeas: runSearch } = await import('./generate-niche-ideas');
+  return runSearch(searchRequest, isInvestorMode);
 }
 
 export async function unlockNiche(nicheId: string) {

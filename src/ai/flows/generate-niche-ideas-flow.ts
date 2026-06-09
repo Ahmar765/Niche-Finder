@@ -1,12 +1,12 @@
 
 'use server';
 
-import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import { UniversalAIClient } from '@/backend/ai/universal-ai-provider';
 import { handleBilledOperation } from '@/backend/actions';
 import type { Recommendation, SearchRequest, VentureUserMemory } from '@nichefinder/domain-types';
 import { getAgentDirectives } from '@/backend/ai/agent-manifest';
+import { normalizeNicheSearchAiOutput, parseAiJson } from '@/lib/parse-ai-json';
 
 /**
  * OS CORE: Multi-Agent Reasoning Configuration
@@ -94,12 +94,15 @@ const generatePrompt = (input: SearchRequest, isInvestorMode: boolean, memory?: 
               "situation": "string",
               "insight": "string",
               "scorecard": { 
-                 ...,
-                 "breakthroughPotentialScore": number (0-10, only if breakthrough mode and applicable)
+                 "overallConfidenceScore": 85,
+                 "scoringExplanation": {
+                   "riskWarning": "string",
+                   "strongestSignal": "string"
+                 },
+                 "breakthroughPotentialScore": 0
               }, 
-              "rawScores": { ... }, 
+              "rawScores": {}, 
               "explanation": { 
-                 ...,
                  "breakthroughRationale": "string (mandatory if breakthrough mode and applicable)"
               },
               "decisionSupport": {
@@ -115,7 +118,7 @@ const generatePrompt = (input: SearchRequest, isInvestorMode: boolean, memory?: 
     `;
 
     return { systemPrompt, userPrompt };
-}
+};
 
 export async function generateNicheIdeasFlow(userId: string, input: SearchRequest, isInvestorMode: boolean, memory?: VentureUserMemory) {
     const { systemPrompt, userPrompt } = generatePrompt(input, isInvestorMode, memory);
@@ -126,6 +129,7 @@ export async function generateNicheIdeasFlow(userId: string, input: SearchReques
             systemPrompt,
             messages: [{ role: 'user', content: userPrompt }],
             jsonMode: true,
+            allowFallback: true,
             temperature: input.searchPriority === 'breakthrough' ? 0.9 : 0.8,
             maxOutputTokens: 4096,
             featureType: 'decision_intelligence',
@@ -139,37 +143,51 @@ export async function generateNicheIdeasFlow(userId: string, input: SearchReques
         aiOperation,
     });
 
-    const parsed = JSON.parse(result.text);
-    const recommendations: Recommendation[] = parsed.results.map((r: any, idx: number) => ({
+    const parsed = parseAiJson<Record<string, unknown>>(result.text);
+    const items = normalizeNicheSearchAiOutput(parsed);
+
+    if (items.length === 0) {
+        throw new Error('AI returned no niche ideas in a valid format. Please try again.');
+    }
+
+    const recommendations: Recommendation[] = items.map((r, idx) => ({
         recommendationId: uuidv4(),
         rank: idx + 1,
-        confidenceScore: r.scorecard.overallConfidenceScore || 85,
+        confidenceScore:
+            typeof r.scorecard.overallConfidenceScore === 'number'
+                ? r.scorecard.overallConfidenceScore
+                : 85,
         niche: {
             id: uuidv4(),
             countryCode: input.countryCode,
-            sectorSlug: r.sector || 'Uncategorized',
+            sectorSlug: r.sector,
             title: r.title,
             summary: r.description,
-            targetAudience: [r.targetCustomer || 'Undisclosed'],
+            targetAudience: [r.targetCustomer],
             lifecycleStage: 'Idea',
-            businessModel: r.businessModel || 'Standard',
-            revenueModel: r.revenueLogic || 'Standard',
+            businessModel: r.businessModel,
+            revenueModel: r.revenueLogic,
             entryBarriers: [],
             digitalMode: 'hybrid',
             maxCapitalUsd: input.maxCapitalUsd || 10000,
         },
-        scores: r.scorecard,
-        rawScores: r.rawScores,
+        scores: r.scorecard as unknown as Recommendation['scores'],
+        rawScores: r.rawScores as unknown as Recommendation['rawScores'],
         explanation: {
             situation: r.situation,
             insight: r.insight,
-            whyNow: r.solution || r.description,
+            whyNow: r.solution,
             whyThisCountry: `Market gap identified in ${input.countryCode}.`,
-            mainRisk: r.scorecard.scoringExplanation?.riskWarning || 'Standard execution risk',
-            evidenceSummary: [r.scorecard.scoringExplanation?.strongestSignal || 'High demand'],
-            breakthroughRationale: r.explanation?.breakthroughRationale || r.breakthroughRationale,
+            mainRisk:
+                (r.scorecard.scoringExplanation as { riskWarning?: string } | undefined)?.riskWarning ??
+                'Standard execution risk',
+            evidenceSummary: [
+                (r.scorecard.scoringExplanation as { strongestSignal?: string } | undefined)?.strongestSignal ??
+                    'High demand',
+            ],
+            breakthroughRationale: r.breakthroughRationale,
         },
-        decisionSupport: r.decisionSupport,
+        decisionSupport: r.decisionSupport as unknown as Recommendation['decisionSupport'],
     }));
 
     return { recommendations, billingDetails };

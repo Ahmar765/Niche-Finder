@@ -177,3 +177,95 @@ export function normalizeSeoArticleAiOutput(raw: unknown): {
     schema,
   };
 }
+
+export type NormalizedNicheSearchItem = {
+  title: string;
+  description: string;
+  situation: string;
+  insight: string;
+  sector: string;
+  targetCustomer: string;
+  businessModel: string;
+  revenueLogic: string;
+  solution: string;
+  scorecard: Record<string, unknown>;
+  rawScores: Record<string, unknown>;
+  explanation: Record<string, unknown>;
+  decisionSupport: Record<string, unknown>;
+  breakthroughRationale?: string;
+};
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+export function normalizeNicheSearchAiOutput(raw: unknown): NormalizedNicheSearchItem[] {
+  if (!raw || typeof raw !== 'object') return [];
+
+  const root = raw as Record<string, unknown>;
+  const list = root.results ?? root.niches ?? root.recommendations ?? root.ideas;
+  if (!Array.isArray(list)) return [];
+
+  const normalized: NormalizedNicheSearchItem[] = [];
+
+  for (const entry of list) {
+    if (!entry || typeof entry !== 'object') continue;
+
+    const item = entry as Record<string, unknown>;
+      const niche = asRecord(item.niche);
+      const scorecard = asRecord(item.scorecard);
+      const explanation = asRecord(item.explanation);
+      const decisionSupport = asRecord(item.decisionSupport);
+      const scoringExplanation = asRecord(scorecard.scoringExplanation);
+
+      const title =
+        pickString(item.title, niche.title, item.name, item.nicheTitle) ?? 'Untitled Opportunity';
+      const description =
+        pickString(item.description, item.summary, niche.summary, item.situation) ??
+        'AI-generated business opportunity.';
+
+      normalized.push({
+        title,
+        description,
+        situation: pickString(item.situation, explanation.situation, description) ?? description,
+        insight: pickString(item.insight, explanation.insight, item.whyNow) ?? description,
+        sector: pickString(item.sector, niche.sectorSlug, item.sectorSlug) ?? 'Uncategorized',
+        targetCustomer:
+          pickString(item.targetCustomer, niche.targetAudience, item.audience) ?? 'Undisclosed',
+        businessModel:
+          pickString(item.businessModel, niche.businessModel) ?? 'Standard',
+        revenueLogic:
+          pickString(item.revenueLogic, item.revenueModel, niche.revenueModel) ?? 'Standard',
+        solution: pickString(item.solution, item.whyNow, description) ?? description,
+        scorecard: {
+          overallConfidenceScore:
+            typeof scorecard.overallConfidenceScore === 'number'
+              ? scorecard.overallConfidenceScore
+              : 85,
+          scoringExplanation: {
+            riskWarning:
+              pickString(scoringExplanation.riskWarning, item.mainRisk) ??
+              'Standard execution risk',
+            strongestSignal:
+              pickString(scoringExplanation.strongestSignal, item.insight) ?? 'High demand signal',
+          },
+          breakthroughPotentialScore:
+            typeof scorecard.breakthroughPotentialScore === 'number'
+              ? scorecard.breakthroughPotentialScore
+              : null,
+          ...scorecard,
+        },
+        rawScores: asRecord(item.rawScores),
+        explanation,
+        decisionSupport,
+        breakthroughRationale: pickString(
+          explanation.breakthroughRationale,
+          item.breakthroughRationale,
+        ),
+      });
+  }
+
+  return normalized;
+}

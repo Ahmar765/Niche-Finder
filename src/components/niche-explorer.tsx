@@ -26,7 +26,8 @@ import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import Link from 'next/link';
 import { useLocale } from '@/i18n';
-import { generateNicheIdeas } from '@/backend/actions';
+import { generateNicheIdeas } from '@/backend/generate-niche-ideas';
+import { completeClientAuth } from '@/firebase/auth/post-auth';
 import type { Recommendation, SearchRequest } from '@nichefinder/domain-types';
 import { ScoreBadge } from './ui/score-badge';
 import { Switch } from './ui/switch';
@@ -164,8 +165,22 @@ export function NicheExplorer() {
         toast({ variant: "destructive", title: "Authentication Required", description: "Create a free account to generate venture projects." });
         return;
     }
+
     setIsLoading(true);
     setNicheIdeas([]);
+
+    try {
+        await user.getIdToken(true);
+        completeClientAuth(user);
+    } catch {
+        toast({
+          variant: 'destructive',
+          title: 'Session expired',
+          description: 'Please sign in again to run a search.',
+        });
+        setIsLoading(false);
+        return;
+    }
 
     const searchRequest: SearchRequest = {
         countryCode: data.country,
