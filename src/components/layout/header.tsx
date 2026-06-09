@@ -25,6 +25,7 @@ import { BuyCreditsDialog } from '../buy-credits-dialog';
 import { useLocale } from '@/i18n';
 import { Skeleton } from '../ui/skeleton';
 import { EditProfileDialog } from '../edit-profile-dialog';
+import { LanguageSwitcher } from '../language-switcher';
 
 const AppHeader = () => {
     const [profileOpen, setProfileOpen] = useState(false);
@@ -97,6 +98,8 @@ const AppHeader = () => {
 
                 {user && <BuyCreditsDialog />}
 
+                <LanguageSwitcher variant="ghost" />
+
                 {isLoading ? (
                     <Skeleton className="h-10 w-24 rounded-md" />
                 ) : user ? (
@@ -125,20 +128,20 @@ const AppHeader = () => {
                                         {userData?.displayName || 'Set your name'}
                                     </p>
                                     <p className="truncate text-xs leading-none text-muted-foreground">{user.email}</p>
-                                    <p className="text-[10px] font-medium text-primary">Edit profile</p>
+                                    <p className="text-[10px] font-medium text-primary">{t('header.editProfile')}</p>
                                 </div>
                             </button>
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onSelect={() => setProfileOpen(true)}>
                             <User className="mr-2 h-4 w-4" />
-                            <span>Profile</span>
+                            <span>{t('header.profile')}</span>
                         </DropdownMenuItem>
                         {isAnyAdmin && (
                         <DropdownMenuItem asChild>
                             <Link href="/admin">
                             <ShieldCheck className="mr-2 h-4 w-4" />
-                            <span>Command Center</span>
+                            <span>{t('header.commandCenter')}</span>
                             </Link>
                         </DropdownMenuItem>
                         )}
@@ -161,13 +164,13 @@ const AppHeader = () => {
                     <>
                     <Button size="sm" variant="outline" asChild>
                     <Link href="/signup">
-                        Sign Up
+                        {t('header.signUp')}
                     </Link>
                     </Button>
                     <Button size="sm" asChild>
                     <Link href="/signin">
                         <LogIn className="mr-2 h-4 w-4" />
-                        Sign In
+                        {t('header.signIn')}
                     </Link>
                     </Button>
                     </>
@@ -178,35 +181,37 @@ const AppHeader = () => {
 };
 
 const MarketingHeader = () => {
+    const { t } = useLocale();
     const navLinks = [
-        { name: 'How It Works', href: '/how-it-works' },
-        { name: 'About', href: '/about' },
-        { name: 'Blog', href: '/blog' },
+        { name: t('nav.howItWorks'), href: '/how-it-works' },
+        { name: t('nav.about'), href: '/about' },
+        { name: t('nav.blog'), href: '/blog' },
     ];
     return (
         <>
             <div className="flex items-center">
                 <Link href="/" className="flex items-center space-x-2 text-white">
                     <Sparkles className="h-6 w-6 text-primary" />
-                    <span className="font-bold sm:inline-block">Niche Finder</span>
+                    <span className="font-bold sm:inline-block">{t('header.title')}</span>
                 </Link>
             </div>
             <nav className="hidden items-center gap-8 text-sm lg:flex flex-1 justify-center">
                 {navLinks.map(link => (
-                    <Link key={link.name} href={link.href} className="text-slate-300 hover:text-white transition-colors">
+                    <Link key={link.href} href={link.href} className="text-slate-300 hover:text-white transition-colors">
                         {link.name}
                     </Link>
                 ))}
             </nav>
             <div className="flex items-center justify-end gap-2 sm:gap-4">
+                <LanguageSwitcher variant="ghost" className="text-white hover:bg-white/10 hover:text-white" />
                  <Button variant="ghost" className="text-white hover:bg-white/10 hidden sm:inline-flex" asChild>
-                    <Link href="/signin">Login</Link>
+                    <Link href="/signin">{t('nav.login')}</Link>
                 </Button>
                 <Button size="sm" variant="outline" className="rounded-lg border-white/20 text-white hover:bg-white/10 hidden sm:inline-flex" asChild>
-                    <Link href="/signup">Sign Up</Link>
+                    <Link href="/signup">{t('nav.signUp')}</Link>
                 </Button>
                 <Button size="sm" className="rounded-lg bg-primary text-primary-foreground hover:bg-primary/90" asChild>
-                    <Link href="/signup">Get Started</Link>
+                    <Link href="/signup">{t('nav.getStarted')}</Link>
                 </Button>
             </div>
         </>

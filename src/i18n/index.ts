@@ -1,110 +1,185 @@
 'use client';
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { exchangeRates, getCurrency } from './currencies';
-import en from './locales/en.json';
-import es from './locales/es.json';
-import fr from './locales/fr.json';
 
-const translations: { [key: string]: any } = { en, es, fr };
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  ReactNode,
+} from 'react';
+import { exchangeRates, getCurrency } from './currencies';
+import {
+  type LocalePreference,
+  type SupportedLang,
+  translations,
+  readStoredLocalePreference,
+  writeStoredLocalePreference,
+  resolveActiveLocale,
+} from './locales';
 
 type LocaleContextType = {
-    t: (key: string, values?: { [key: string]: string | number }) => string;
-    formatCurrency: (amount: number, fromCurrency?: string, toCurrency?: string, isParity?: boolean) => string;
-    locale: string;
-    currency: string;
-    lang: string;
-    isMounted: boolean;
+  t: (key: string, values?: { [key: string]: string | number }) => string;
+  formatCurrency: (
+    amount: number,
+    fromCurrency?: string,
+    toCurrency?: string,
+    isParity?: boolean,
+  ) => string;
+  locale: string;
+  currency: string;
+  lang: SupportedLang;
+  localePreference: LocalePreference;
+  setLocalePreference: (preference: LocalePreference) => void;
+  isMounted: boolean;
 };
 
 const LocaleContext = createContext<LocaleContextType | undefined>(undefined);
 
+function applyDocumentLanguage(lang: SupportedLang, locale: string) {
+  if (typeof document === 'undefined') return;
+  document.documentElement.lang = lang;
+  document.documentElement.setAttribute('data-locale', locale);
+}
+
 export const LocaleProvider = ({ children }: { children: ReactNode }) => {
-    const [locale, setLocale] = useState('en-US');
-    const [lang, setLang] = useState('en');
-    const [currency, setCurrency] = useState('USD');
-    const [loadedTranslations, setLoadedTranslations] = useState(en);
-    const [isMounted, setIsMounted] = useState(false);
+  const [localePreference, setLocalePreferenceState] = useState<LocalePreference>('auto');
+  const [locale, setLocale] = useState('en-US');
+  const [lang, setLang] = useState<SupportedLang>('en');
+  const [currency, setCurrency] = useState('USD');
+  const [loadedTranslations, setLoadedTranslations] = useState(translations.en);
+  const [isMounted, setIsMounted] = useState(false);
 
-    useEffect(() => {
-        const browserLang = navigator.language || 'en-US';
-        const primaryLang = browserLang.split('-')[0];
-        setLocale(browserLang);
-        
-        if (translations[primaryLang]) {
-            setLang(primaryLang);
-            setLoadedTranslations(translations[primaryLang]);
-        } else {
-            setLang('en');
-            setLoadedTranslations(en);
-        }
-        
-        setCurrency(getCurrency(browserLang));
-        setIsMounted(true);
-    }, []);
+  const applyLocale = useCallback((preference: LocalePreference) => {
+    const resolved = resolveActiveLocale(preference);
+    setLang(resolved.lang);
+    setLocale(resolved.locale);
+    setLoadedTranslations(translations[resolved.lang]);
+    setCurrency(getCurrency(resolved.locale));
+    applyDocumentLanguage(resolved.lang, resolved.locale);
+  }, []);
 
-    const t = (key: string, values?: { [key: string]: string | number }): string => {
-        const keys = key.split('.');
-        let result: any = loadedTranslations;
-        try {
-            for (const k of keys) {
-                result = result?.[k];
-            }
-        } catch (error) {
-            return key;
-        }
+  const setLocalePreference = useCallback(
+    (preference: LocalePreference) => {
+      setLocalePreferenceState(preference);
+      writeStoredLocalePreference(preference);
+      applyLocale(preference);
+    },
+    [applyLocale],
+  );
 
-        if (typeof result !== 'string') {
-            return key;
-        }
-        
-        let sResult = result;
+  useEffect(() => {
+    const stored = readStoredLocalePreference();
+    setLocalePreferenceState(stored);
+    applyLocale(stored);
+    setIsMounted(true);
+  }, [applyLocale]);
 
-        if (values) {
-            for (const valueKey in values) {
-                sResult = sResult.replace(`{${valueKey}}`, String(values[valueKey]));
-            }
-        }
-        return sResult;
+  useEffect(() => {
+    if (!isMounted || localePreference !== 'auto') return;
+
+    const syncFromDevice = () => applyLocale('auto');
+
+    window.addEventListener('languagechange', syncFromDevice);
+    window.addEventListener('focus', syncFromDevice);
+
+    return () => {
+      window.removeEventListener('languagechange', syncFromDevice);
+      window.removeEventListener('focus', syncFromDevice);
     };
+  }, [isMounted, localePreference, applyLocale]);
 
-    /**
-     * Formats currency with optional parity logic.
-     */
-    const formatCurrency = (amount: number, fromCurrency: string = 'USD', toCurrency?: string, isParity: boolean = false) => {
-        // Hydration safety: use stable default if not mounted
-        const currentLocale = isMounted ? locale : 'en-US';
-        const targetCurrencyCode = toCurrency || (isMounted ? currency : 'USD');
-        
-        let displayAmount = amount;
-        if (!isParity) {
-            const rate = (exchangeRates[targetCurrencyCode] || exchangeRates['USD']) / (exchangeRates[fromCurrency] || 1);
-            displayAmount = amount * rate;
+  const t = useCallback(
+    (key: string, values?: { [key: string]: string | number }): string => {
+      const keys = key.split('.');
+      let result: unknown = loadedTranslations;
+      try {
+        for (const k of keys) {
+          result = (result as Record<string, unknown>)?.[k];
         }
-        
-        try {
-            return new Intl.NumberFormat(currentLocale, {
-                style: 'currency',
-                currency: targetCurrencyCode,
-                maximumFractionDigits: 0,
-            }).format(displayAmount);
-        } catch (e) {
-             return new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD',
-                maximumFractionDigits: 0,
-            }).format(amount);
+      } catch {
+        return key;
+      }
+
+      if (typeof result !== 'string') {
+        return key;
+      }
+
+      let sResult = result;
+      if (values) {
+        for (const valueKey in values) {
+          sResult = sResult.replace(`{${valueKey}}`, String(values[valueKey]));
         }
-    };
+      }
+      return sResult;
+    },
+    [loadedTranslations],
+  );
 
-    const value = { t, formatCurrency, locale, currency, lang, isMounted };
+  const formatCurrency = useCallback(
+    (
+      amount: number,
+      fromCurrency: string = 'USD',
+      toCurrency?: string,
+      isParity: boolean = false,
+    ) => {
+      const currentLocale = isMounted ? locale : 'en-US';
+      const targetCurrencyCode = toCurrency || (isMounted ? currency : 'USD');
 
-    return React.createElement(LocaleContext.Provider, { value }, children);
+      let displayAmount = amount;
+      if (!isParity) {
+        const rate =
+          (exchangeRates[targetCurrencyCode] || exchangeRates.USD) /
+          (exchangeRates[fromCurrency] || 1);
+        displayAmount = amount * rate;
+      }
+
+      try {
+        return new Intl.NumberFormat(currentLocale, {
+          style: 'currency',
+          currency: targetCurrencyCode,
+          maximumFractionDigits: 0,
+        }).format(displayAmount);
+      } catch {
+        return new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+          maximumFractionDigits: 0,
+        }).format(amount);
+      }
+    },
+    [isMounted, locale, currency],
+  );
+
+  const value = useMemo(
+    () => ({
+      t,
+      formatCurrency,
+      locale,
+      currency,
+      lang,
+      localePreference,
+      setLocalePreference,
+      isMounted,
+    }),
+    [t, formatCurrency, locale, currency, lang, localePreference, setLocalePreference, isMounted],
+  );
+
+  return React.createElement(LocaleContext.Provider, { value }, children);
 };
 
 export const useLocale = () => {
-    const context = useContext(LocaleContext);
-    if (context === undefined) {
-        throw new Error('useLocale must be used within a LocaleProvider');
-    }
-    return context;
+  const context = useContext(LocaleContext);
+  if (context === undefined) {
+    throw new Error('useLocale must be used within a LocaleProvider');
+  }
+  return context;
 };
+
+export {
+  type LocalePreference,
+  type SupportedLang,
+  SUPPORTED_LANGUAGES,
+  resolveLocaleFromDevice,
+} from './locales';

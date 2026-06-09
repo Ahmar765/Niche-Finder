@@ -3,10 +3,48 @@
     "header": {
       "title": "Niche Finder",
       "governmentMode": "Government Mode",
+      "commandCenter": "Command Center",
+      "profile": "Profile",
+      "editProfile": "Edit profile",
       "acu": "{count} ACU",
       "buyCredits": "Buy Credits",
       "dashboard": "Dashboard",
-      "logout": "Log out"
+      "logout": "Log out",
+      "signUp": "Sign Up",
+      "signIn": "Sign In"
+    },
+    "nav": {
+      "howItWorks": "How It Works",
+      "about": "About",
+      "blog": "Blog",
+      "login": "Login",
+      "signUp": "Sign Up",
+      "getStarted": "Get Started"
+    },
+    "language": {
+      "label": "Language",
+      "auto": "Device language",
+      "en": "English",
+      "es": "Español",
+      "fr": "Français"
+    },
+    "footer": {
+      "tagline": "The AI Operating System for Venture Creation. Discover, validate, and build your next investor-ready business.",
+      "platform": "Platform",
+      "legal": "Legal",
+      "connect": "Connect",
+      "howItWorks": "How It Works",
+      "aboutUs": "About Us",
+      "blog": "Blog",
+      "contact": "Contact",
+      "terms": "Terms of Use",
+      "privacy": "Privacy Policy",
+      "disclaimer": "Disclaimer",
+      "cookies": "Cookies",
+      "linkedin": "LinkedIn",
+      "twitter": "Twitter / X",
+      "copyright": "© {year} Niche Finder Ltd. All rights reserved.",
+      "legalNotice": "Use of Niche Finder is subject to our {terms} and {privacy}."
     },
     "home": {
       "title": "Uncover Your Next Breakthrough Business Idea",

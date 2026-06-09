@@ -3,10 +3,48 @@
     "header": {
         "title": "Niche Finder",
         "governmentMode": "Mode Gouvernement",
+        "commandCenter": "Centre de Commande",
+        "profile": "Profil",
+        "editProfile": "Modifier le profil",
         "acu": "ACU: {count}",
         "buyCredits": "Acheter des Crédits",
         "dashboard": "Tableau de Bord",
-        "logout": "Déconnexion"
+        "logout": "Déconnexion",
+        "signUp": "S'inscrire",
+        "signIn": "Se connecter"
+    },
+    "nav": {
+        "howItWorks": "Comment ça marche",
+        "about": "À propos",
+        "blog": "Blog",
+        "login": "Connexion",
+        "signUp": "S'inscrire",
+        "getStarted": "Commencer"
+    },
+    "language": {
+        "label": "Langue",
+        "auto": "Langue de l'appareil",
+        "en": "English",
+        "es": "Español",
+        "fr": "Français"
+    },
+    "footer": {
+        "tagline": "Le Système d'Exploitation IA pour la Création d'Entreprises. Découvrez, validez et construisez votre prochaine entreprise prête pour les investisseurs.",
+        "platform": "Plateforme",
+        "legal": "Légal",
+        "connect": "Connecter",
+        "howItWorks": "Comment ça marche",
+        "aboutUs": "À propos de nous",
+        "blog": "Blog",
+        "contact": "Contact",
+        "terms": "Conditions d'utilisation",
+        "privacy": "Politique de confidentialité",
+        "disclaimer": "Avertissement",
+        "cookies": "Cookies",
+        "linkedin": "LinkedIn",
+        "twitter": "Twitter / X",
+        "copyright": "© {year} Niche Finder Ltd. Tous droits réservés.",
+        "legalNotice": "L'utilisation de Niche Finder est soumise à nos {terms} et {privacy}."
     },
     "home": {
         "title": "Trouvez Votre Prochaine Grande Idée",

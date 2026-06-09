@@ -3,10 +3,48 @@
     "header": {
       "title": "Niche Finder",
       "governmentMode": "Modo Gobierno",
+      "commandCenter": "Centro de Comando",
+      "profile": "Perfil",
+      "editProfile": "Editar perfil",
       "acu": "ACU: {count}",
       "buyCredits": "Comprar Créditos",
       "dashboard": "Tablero",
-      "logout": "Cerrar Sesión"
+      "logout": "Cerrar Sesión",
+      "signUp": "Registrarse",
+      "signIn": "Iniciar Sesión"
+    },
+    "nav": {
+      "howItWorks": "Cómo Funciona",
+      "about": "Acerca de",
+      "blog": "Blog",
+      "login": "Iniciar Sesión",
+      "signUp": "Registrarse",
+      "getStarted": "Empezar"
+    },
+    "language": {
+      "label": "Idioma",
+      "auto": "Idioma del dispositivo",
+      "en": "English",
+      "es": "Español",
+      "fr": "Français"
+    },
+    "footer": {
+      "tagline": "El Sistema Operativo de IA para la Creación de Empresas. Descubre, valida y construye tu próximo negocio listo para inversores.",
+      "platform": "Plataforma",
+      "legal": "Legal",
+      "connect": "Conectar",
+      "howItWorks": "Cómo Funciona",
+      "aboutUs": "Acerca de Nosotros",
+      "blog": "Blog",
+      "contact": "Contacto",
+      "terms": "Términos de Uso",
+      "privacy": "Política de Privacidad",
+      "disclaimer": "Aviso Legal",
+      "cookies": "Cookies",
+      "linkedin": "LinkedIn",
+      "twitter": "Twitter / X",
+      "copyright": "© {year} Niche Finder Ltd. Todos los derechos reservados.",
+      "legalNotice": "El uso de Niche Finder está sujeto a nuestros {terms} y {privacy}."
     },
     "home": {
       "title": "Encuentra Tu Próxima Gran Idea",
