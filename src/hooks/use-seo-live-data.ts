@@ -1,61 +1,61 @@
 'use client';
 
-import { useMemo } from 'react';
-import { collection, limit, orderBy, query } from 'firebase/firestore';
-import { useFirestore } from '@/firebase/provider';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import type { SeoArticle, SocialAmplificationTask } from '@nichefinder/domain-types';
-import {
-  buildSeoCommandCenterView,
-  type PlatformSeoEvent,
-  type SeoCommandCenterView,
-} from '@/lib/seo/aggregate-analytics';
+import { useCallback, useEffect, useState } from 'react';
+import type { SeoCommandCenterView } from '@/lib/seo/aggregate-analytics';
+
+async function fetchSeoDashboard(): Promise<SeoCommandCenterView> {
+  const response = await fetch('/api/seo/dashboard', { credentials: 'include' });
+  const rawBody = await response.text();
+  const contentType = response.headers.get('content-type') ?? '';
+
+  if (!contentType.includes('application/json')) {
+    throw new Error('SEO dashboard returned an unexpected response.');
+  }
+
+  const result = JSON.parse(rawBody) as SeoCommandCenterView & { error?: string };
+  if (!response.ok || result.error) {
+    throw new Error(result.error ?? 'Failed to load SEO dashboard.');
+  }
+
+  return result;
+}
 
 export function useSeoLiveData(enabled: boolean): {
   data: SeoCommandCenterView | null;
   isLoading: boolean;
+  error: string | null;
+  refresh: () => Promise<void>;
 } {
-  const firestore = useFirestore();
+  const [data, setData] = useState<SeoCommandCenterView | null>(null);
+  const [isLoading, setIsLoading] = useState(Boolean(enabled));
+  const [error, setError] = useState<string | null>(null);
 
-  const articlesQuery = useMemo(
-    () =>
-      enabled && firestore
-        ? query(collection(firestore, 'seo_articles'), orderBy('updatedAt', 'desc'), limit(50))
-        : null,
-    [enabled, firestore],
-  );
+  const refresh = useCallback(async () => {
+    if (!enabled) {
+      setData(null);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
 
-  const tasksQuery = useMemo(
-    () =>
-      enabled && firestore
-        ? query(collection(firestore, 'seo_amplification_tasks'), limit(50))
-        : null,
-    [enabled, firestore],
-  );
+    setIsLoading(true);
+    setError(null);
 
-  const eventsQuery = useMemo(
-    () =>
-      enabled && firestore
-        ? query(collection(firestore, 'platform_events'), orderBy('createdAt', 'desc'), limit(30))
-        : null,
-    [enabled, firestore],
-  );
+    try {
+      const view = await fetchSeoDashboard();
+      setData(view);
+    } catch (loadError: unknown) {
+      const message = loadError instanceof Error ? loadError.message : 'Failed to load SEO dashboard';
+      setError(message);
+      setData(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [enabled]);
 
-  const { data: articles, isLoading: articlesLoading } = useCollection(articlesQuery);
-  const { data: tasks, isLoading: tasksLoading } = useCollection(tasksQuery);
-  const { data: events, isLoading: eventsLoading } = useCollection(eventsQuery);
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
 
-  const data = useMemo(() => {
-    if (!enabled) return null;
-    return buildSeoCommandCenterView(
-      articles as SeoArticle[],
-      tasks as Array<SocialAmplificationTask & { articleTitle?: string }>,
-      events as PlatformSeoEvent[],
-    );
-  }, [enabled, articles, tasks, events]);
-
-  return {
-    data,
-    isLoading: enabled && (articlesLoading || tasksLoading || eventsLoading),
-  };
+  return { data, isLoading, error, refresh };
 }

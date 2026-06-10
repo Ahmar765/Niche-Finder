@@ -14,12 +14,40 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { generateAutonomousArticle, amplifyContent, publishArticle } from '@/backend/seo/publishing-engine';
 import { useUser } from '@/firebase/auth/use-user';
 import { useSeoLiveData } from '@/hooks/use-seo-live-data';
 import type { SeoArticle, SeoContentType } from '@nichefinder/domain-types';
 import { toast } from 'sonner';
 import { cn } from '@/shared/utils';
+import { SeoArticleDetailSheet } from '@/components/seo-article-detail-sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
+async function postSeoApi<T>(path: string, body: Record<string, unknown>): Promise<T> {
+  const response = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+
+  const rawBody = await response.text();
+  const contentType = response.headers.get('content-type') ?? '';
+  if (!contentType.includes('application/json')) {
+    throw new Error(
+      response.status === 404
+        ? 'SEO service is unavailable. Please refresh and try again.'
+        : 'SEO request failed — the server returned an unexpected response.',
+    );
+  }
+
+  const result = JSON.parse(rawBody) as T & { error?: string };
+  if (!response.ok || result.error) {
+    throw new Error(result.error ?? 'Request failed');
+  }
+
+  return result;
+}
 
 const PLATFORM_LABELS: Record<string, string> = {
   tiktok: 'TikTok',
@@ -79,25 +107,98 @@ type SeoCommandCenterProps = {
 
 export function SeoCommandCenter({ embedded }: SeoCommandCenterProps) {
   const { user } = useUser();
-  const { data: analytics, isLoading: isAnalyticsLoading } = useSeoLiveData(true);
+  const { data: analytics, isLoading: isAnalyticsLoading, error: analyticsError, refresh } = useSeoLiveData(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [topic, setTopic] = useState('');
+  const [selectedContentType, setSelectedContentType] = useState<SeoContentType>('pillar');
   const [activeTab, setActiveTab] = useState('visibility');
+  const [articleAction, setArticleAction] = useState<{ id: string; type: 'amplify' | 'publish' } | null>(null);
+  const [selectedArticle, setSelectedArticle] = useState<SeoArticle | null>(null);
+  const [isArticleSheetOpen, setIsArticleSheetOpen] = useState(false);
+  const [selectedScript, setSelectedScript] = useState<{ title: string; platform: string; script: string } | null>(null);
+  const [isScriptSheetOpen, setIsScriptSheetOpen] = useState(false);
 
-  const handleGenerate = async (type: SeoContentType = 'pillar') => {
-    if (!topic || !user) return;
+  const openArticle = (article: SeoArticle) => {
+    setSelectedArticle(article);
+    setIsArticleSheetOpen(true);
+  };
+
+  const handleGenerate = async (type: SeoContentType = selectedContentType) => {
+    const trimmedTopic = topic.trim();
+    if (!trimmedTopic) {
+      toast.error('Topic required', {
+        description: 'Enter a market signal or topic in the field above before generating.',
+      });
+      return;
+    }
+    if (!user) {
+      toast.error('Sign in required', {
+        description: 'You must be signed in to generate SEO content.',
+      });
+      return;
+    }
+
+    setSelectedContentType(type);
     setIsGenerating(true);
     try {
-      const result = await generateAutonomousArticle(user.uid, topic, type);
-      toast.success(`${type.toUpperCase()} Generated`, {
+      const result = await postSeoApi<{ article: SeoArticle }>('/api/seo/generate-article', {
+        topic: trimmedTopic,
+        type,
+      });
+      const label = CONTENT_TYPE_LABELS[type] ?? type;
+      toast.success(`${label} generated`, {
         description: `Article "${result.article.title}" saved to Content War Room.`,
       });
       setTopic('');
+      await refresh();
+      setActiveTab('warroom');
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Generation failed';
       toast.error('Generation Failed', { description: message });
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleSelectContentType = (type: SeoContentType) => {
+    setSelectedContentType(type);
+    if (topic.trim()) {
+      void handleGenerate(type);
+      return;
+    }
+    toast.message(`${CONTENT_TYPE_LABELS[type] ?? type} selected`, {
+      description: 'Enter a topic above, then click Execute or this format again.',
+    });
+  };
+
+  const handleAmplify = async (articleId: string) => {
+    if (!user) return;
+    setArticleAction({ id: articleId, type: 'amplify' });
+    try {
+      await postSeoApi('/api/seo/amplify', { articleId });
+      toast.success('Social scripts queued', {
+        description: 'Open Social Amplification to review the scripts.',
+      });
+      await refresh();
+      setActiveTab('social');
+    } catch (e: unknown) {
+      toast.error('Amplification failed', { description: e instanceof Error ? e.message : 'Failed' });
+    } finally {
+      setArticleAction(null);
+    }
+  };
+
+  const handlePublish = async (articleId: string) => {
+    if (!user) return;
+    setArticleAction({ id: articleId, type: 'publish' });
+    try {
+      await postSeoApi('/api/seo/publish', { articleId });
+      toast.success('Article published', { description: 'Status updated to live.' });
+      await refresh();
+    } catch (e: unknown) {
+      toast.error('Publish failed', { description: e instanceof Error ? e.message : 'Failed' });
+    } finally {
+      setArticleAction(null);
     }
   };
 
@@ -126,6 +227,11 @@ export function SeoCommandCenter({ embedded }: SeoCommandCenterProps) {
       )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {analyticsError && (
+          <div className="md:col-span-2 lg:col-span-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {analyticsError}
+          </div>
+        )}
         <StatCard
           title="Total Impressions"
           value={isAnalyticsLoading ? '…' : (analytics?.totalViews ?? 0).toLocaleString()}
@@ -168,23 +274,55 @@ export function SeoCommandCenter({ embedded }: SeoCommandCenterProps) {
                   placeholder="Enter topic (e.g. 'Fintech adoption in Nigeria 2026')"
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !isGenerating) {
+                      void handleGenerate(selectedContentType);
+                    }
+                  }}
                   className="bg-background border-border/40 focus:ring-primary/20 h-12 text-sm"
                 />
-                <Button onClick={() => handleGenerate('pillar')} disabled={isGenerating || !topic} className="h-12 px-6">
+                <Button
+                  type="button"
+                  onClick={() => handleGenerate(selectedContentType)}
+                  disabled={isGenerating || !topic.trim()}
+                  className="h-12 px-6"
+                >
                   {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                  <span className="ml-2 font-bold uppercase tracking-widest text-[10px]">Execute Production</span>
+                  <span className="ml-2 font-bold uppercase tracking-widest text-[10px]">
+                    Execute {CONTENT_TYPE_LABELS[selectedContentType] ?? 'Production'}
+                  </span>
                 </Button>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
                 {([
-                  { label: 'Comparison', type: 'comparison' },
-                  { label: 'GEO Page', type: 'geo' },
-                  { label: 'FAQ Cluster', type: 'faq' },
-                  { label: 'Case Study', type: 'case_study' },
-                ] as const).map(({ label, type }) => (
-                  <Button key={type} variant="outline" size="sm" className="text-[9px] h-8 font-bold uppercase tracking-widest opacity-70 hover:opacity-100" onClick={() => handleGenerate(type)}>{label}</Button>
-                ))}
+                  { label: 'Comparison', type: 'comparison' as const },
+                  { label: 'GEO Page', type: 'geo' as const },
+                  { label: 'FAQ Cluster', type: 'faq' as const },
+                  { label: 'Case Study', type: 'case_study' as const },
+                ]).map(({ label, type }) => {
+                  const isSelected = selectedContentType === type;
+                  const isRunning = isGenerating && isSelected;
+                  return (
+                    <Button
+                      key={type}
+                      type="button"
+                      variant={isSelected ? 'default' : 'outline'}
+                      size="sm"
+                      disabled={isGenerating}
+                      className={cn(
+                        'text-[9px] h-8 font-bold uppercase tracking-widest',
+                        isSelected ? 'ring-2 ring-primary/60' : 'opacity-80 hover:opacity-100',
+                      )}
+                      onClick={() => handleSelectContentType(type)}
+                    >
+                      {isRunning ? <Loader2 className="h-3 w-3 animate-spin" /> : label}
+                    </Button>
+                  );
+                })}
               </div>
+              <p className="text-[10px] text-muted-foreground">
+                Select a format, enter a topic, then click the format again or press Execute to generate.
+              </p>
             </CardContent>
           </Card>
 
@@ -267,66 +405,68 @@ export function SeoCommandCenter({ embedded }: SeoCommandCenterProps) {
                     <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
                   ) : analytics?.articles?.length ? (
                     analytics.articles.map((art: SeoArticle) => (
-                      <Card key={art.id} className="bg-secondary/10 border-border/40 hover:bg-secondary/20 transition-all cursor-pointer group">
+                      <Card
+                        key={art.id}
+                        className="bg-secondary/10 border-border/40 hover:bg-secondary/20 transition-all cursor-pointer group"
+                        onClick={() => openArticle(art)}
+                      >
                         <CardContent className="p-4 flex items-center justify-between">
-                          <div className="flex gap-4 items-center">
+                          <div className="flex gap-4 items-center min-w-0 flex-1">
                             <div className="p-3 rounded-lg bg-background border border-border/40 text-primary shadow-inner">
                               <Newspaper className="h-5 w-5" />
                             </div>
                             <div className="space-y-1">
-                              <p className="text-sm font-bold group-hover:text-primary transition-colors">{art.title}</p>
+                              <p className="text-sm font-bold group-hover:text-primary transition-colors line-clamp-2">{art.title}</p>
                               <div className="flex gap-3 items-center">
                                 <Badge variant="outline" className="text-[8px] uppercase tracking-widest border-primary/20 text-primary h-5">
                                   {CONTENT_TYPE_LABELS[art.contentType] ?? art.contentType}
                                 </Badge>
                                 <span className="text-[10px] text-muted-foreground font-mono font-bold">
-                                  {formatViews(art.analytics.views)} Views • {art.status === 'published' ? 'Live' : 'Pending'}
+                                  {formatViews(art.analytics?.views ?? 0)} Views • {art.status === 'published' ? 'Live' : 'Pending'}
                                 </span>
                               </div>
                             </div>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2" onClick={(event) => event.stopPropagation()}>
                             {art.status === 'draft' && user && (
                               <Button
+                                type="button"
                                 size="sm"
                                 variant="outline"
                                 className="h-8 text-[9px] font-bold uppercase tracking-widest"
-                                onClick={async () => {
-                                  try {
-                                    await amplifyContent(user.uid, art.id);
-                                    toast.success('Social scripts queued');
-                                  } catch (e: unknown) {
-                                    toast.error('Amplification failed', { description: e instanceof Error ? e.message : 'Failed' });
-                                  }
-                                }}
+                                disabled={Boolean(articleAction)}
+                                onClick={() => handleAmplify(art.id)}
                               >
-                                Amplify
+                                {articleAction?.id === art.id && articleAction.type === 'amplify' ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  'Amplify'
+                                )}
                               </Button>
                             )}
                             {art.status === 'draft' && (
                               <Button
+                                type="button"
                                 size="sm"
                                 variant="outline"
                                 className="h-8 text-[9px] font-bold uppercase tracking-widest"
-                                onClick={async () => {
-                                  try {
-                                    await publishArticle(art.id);
-                                    toast.success('Article published');
-                                  } catch (e: unknown) {
-                                    toast.error('Publish failed', { description: e instanceof Error ? e.message : 'Failed' });
-                                  }
-                                }}
+                                disabled={Boolean(articleAction)}
+                                onClick={() => handlePublish(art.id)}
                               >
-                                Publish
+                                {articleAction?.id === art.id && articleAction.type === 'publish' ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  'Publish'
+                                )}
                               </Button>
                             )}
                             <Badge className={cn(
-                              'text-[9px] font-bold uppercase tracking-widest h-8 px-4 flex items-center',
+                              'text-[9px] font-bold uppercase tracking-widest h-8 px-4 flex items-center pointer-events-none',
                               art.status === 'published'
                                 ? 'bg-green-500/10 text-green-500 border-green-500/20 border'
                                 : 'bg-amber-500/10 text-amber-500 border-amber-500/20 border',
                             )}>
-                              {art.status.replace('_', ' ')}
+                              {art.status === 'published' ? 'Live' : 'Draft'}
                             </Badge>
                           </div>
                         </CardContent>
@@ -349,7 +489,18 @@ export function SeoCommandCenter({ embedded }: SeoCommandCenterProps) {
                     <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
                   ) : analytics?.amplificationTasks?.length ? (
                     analytics.amplificationTasks.map((task) => (
-                      <div key={task.id} className="flex items-center justify-between p-4 rounded-lg bg-background border border-border/40 shadow-sm group">
+                      <div
+                        key={task.id}
+                        className="flex items-center justify-between p-4 rounded-lg bg-background border border-border/40 shadow-sm group cursor-pointer hover:border-primary/30"
+                        onClick={() => {
+                          setSelectedScript({
+                            title: task.articleTitle ?? 'Article',
+                            platform: PLATFORM_LABELS[task.platform] ?? task.platform,
+                            script: task.script ?? '',
+                          });
+                          setIsScriptSheetOpen(true);
+                        }}
+                      >
                         <div className="flex gap-4 items-center">
                           <div className="p-2.5 rounded-full bg-secondary text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
                             <MessageSquare className="h-4 w-4" />
@@ -442,6 +593,49 @@ export function SeoCommandCenter({ embedded }: SeoCommandCenterProps) {
           </Card>
         </div>
       </div>
+
+      <SeoArticleDetailSheet
+        article={selectedArticle}
+        open={isArticleSheetOpen}
+        onOpenChange={setIsArticleSheetOpen}
+        contentTypeLabel={
+          selectedArticle
+            ? CONTENT_TYPE_LABELS[selectedArticle.contentType] ?? selectedArticle.contentType
+            : undefined
+        }
+        onAmplify={handleAmplify}
+        onPublish={handlePublish}
+        isAmplifying={Boolean(
+          articleAction &&
+            selectedArticle &&
+            articleAction.id === selectedArticle.id &&
+            articleAction.type === 'amplify',
+        )}
+        isPublishing={Boolean(
+          articleAction &&
+            selectedArticle &&
+            articleAction.id === selectedArticle.id &&
+            articleAction.type === 'publish',
+        )}
+      />
+
+      <Sheet open={isScriptSheetOpen} onOpenChange={setIsScriptSheetOpen}>
+        <SheetContent className="w-full sm:max-w-xl">
+          {selectedScript && (
+            <>
+              <SheetHeader className="text-left space-y-2 pb-4">
+                <SheetTitle className="text-lg">{selectedScript.title}</SheetTitle>
+                <Badge variant="outline" className="w-fit text-[9px] uppercase tracking-widest">
+                  {selectedScript.platform} script
+                </Badge>
+              </SheetHeader>
+              <ScrollArea className="h-[70vh] rounded-lg border bg-secondary/20 p-4">
+                <pre className="whitespace-pre-wrap text-sm leading-relaxed font-sans">{selectedScript.script}</pre>
+              </ScrollArea>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

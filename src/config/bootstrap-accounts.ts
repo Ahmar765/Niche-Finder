@@ -56,6 +56,11 @@ export const BOOTSTRAP_ACCOUNTS: BootstrapAccount[] = [
   },
 ];
 
+/** Account types shown on sign-in / sign-up (SEO & governance live inside Super Admin). */
+export const SIGNUP_ACCOUNT_OPTIONS = BOOTSTRAP_ACCOUNTS.filter(
+  (account) => account.id === 'operator' || account.id === 'admin',
+);
+
 export const ADMIN_ROLES = ['admin', 'super_admin', 'finance_admin', 'support_admin'] as const;
 
 export function getBootstrapAccount(id: BootstrapAccountId): BootstrapAccount {

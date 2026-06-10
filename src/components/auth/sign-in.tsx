@@ -9,7 +9,7 @@ import { ensureAuthReady } from '@/firebase/config';
 import { useAuth } from '@/firebase/provider';
 import { finalizeAuthSession } from '@/firebase/auth/post-auth';
 import { initializeNewUser } from '@/backend/initialize-new-user';
-import { getBootstrapRedirect, getBootstrapAccount, type BootstrapAccountId } from '@/config/bootstrap-accounts';
+import { getBootstrapRedirect, type BootstrapAccountId } from '@/config/bootstrap-accounts';
 import { AccountTypeSelect } from '@/components/auth/account-type-select';
 import { signInWithGoogle } from '@/firebase/auth/google-sign-in';
 import { getFirebaseAuthErrorMessage } from '@/firebase/auth/error-messages';
@@ -26,17 +26,14 @@ export function SignIn() {
   const [isLoadingGuest, setIsLoadingGuest] = useState(false);
   const [isLoadingEmail, setIsLoadingEmail] = useState(false);
   const [accountType, setAccountType] = useState<BootstrapAccountId>('operator');
-  const [email, setEmail] = useState(() => getBootstrapAccount('operator').email);
-  const [password, setPassword] = useState(() => getBootstrapAccount('operator').password);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   const auth = useAuth();
   const { toast } = useToast();
 
   const handleAccountTypeChange = (next: BootstrapAccountId) => {
     setAccountType(next);
-    const account = getBootstrapAccount(next);
-    setEmail(account.email);
-    setPassword(account.password);
   };
 
   const handleEmailSignIn = async (e: React.FormEvent) => {

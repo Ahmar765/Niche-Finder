@@ -17,7 +17,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useToast } from '@/hooks/use-toast';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore } from '@/firebase/provider';
-import { collection, query, orderBy, limit, doc, where, getDocs, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, limit, doc, where, updateDoc } from 'firebase/firestore';
 import { adminModifyAcu, generateAndSaveBlogPostDraft, publishBlogPost } from '@/backend/actions';
 import { ScrollArea } from './ui/scroll-area';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
@@ -118,27 +118,40 @@ export function AdminDashboard({ embedded, defaultTab = 'support' }: AdminDashbo
 
   async function handleSearch(event: React.FormEvent) {
     event.preventDefault();
-    if (!searchEmail || !firestore) return;
+    if (!searchEmail) return;
 
     setIsSearching(true);
     setSearchError(null);
     setSearchResults([]);
 
     try {
-      const usersRef = collection(firestore, 'users');
-      const q = query(usersRef, where('email', '==', searchEmail.trim()));
-      const querySnapshot = await getDocs(q);
-      
-      const users = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const response = await fetch('/api/admin/search-users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: searchEmail.trim() }),
+      });
 
+      const rawBody = await response.text();
+      const contentType = response.headers.get('content-type') ?? '';
+      if (!contentType.includes('application/json')) {
+        throw new Error('User search returned an unexpected response.');
+      }
+
+      const result = JSON.parse(rawBody) as { users?: typeof searchResults; error?: string };
+      if (!response.ok || result.error) {
+        throw new Error(result.error ?? 'User search failed.');
+      }
+
+      const users = result.users ?? [];
       if (users.length === 0) {
         setSearchError('No user found with that email.');
       } else {
         setSearchResults(users);
       }
-    } catch (error: any) {
-      console.error("User search failed:", error);
-      setSearchError('An error occurred during the search.');
+    } catch (error: unknown) {
+      console.error('User search failed:', error);
+      setSearchError(error instanceof Error ? error.message : 'An error occurred during the search.');
     } finally {
         setIsSearching(false);
     }
@@ -435,6 +448,9 @@ export function AdminDashboard({ embedded, defaultTab = 'support' }: AdminDashbo
                                         {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Search'}
                                     </Button>
                                 </form>
+                                {searchError && (
+                                  <p className="mt-3 text-sm text-destructive">{searchError}</p>
+                                )}
                                 {searchResults.length > 0 && (
                                     <div className="mt-4 space-y-2">
                                         <h4 className="font-semibold text-sm text-white">Search Results</h4>
